@@ -7,6 +7,7 @@ import AdminCategories from './pages/AdminCategories';
 import AdminSettings from './pages/AdminSettings';
 import ImportExport from './pages/ImportExport';
 import SystemDetail from './pages/SystemDetail';
+import AdminSecurity from './pages/AdminSecurity';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="categories" element={<AdminCategories />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="import-export" element={<ImportExport />} />
+        <Route path="security" element={<AdminSecurity />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

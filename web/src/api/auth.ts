@@ -14,3 +14,8 @@ export async function me() {
   const { data } = await client.get('/auth/me');
   return data;
 }
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const { data } = await client.post('/auth/change-password', { currentPassword, newPassword });
+  return data;
+}

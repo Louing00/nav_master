@@ -1,4 +1,4 @@
-import { LayoutGrid, List, LogOut, Settings, UploadCloud } from 'lucide-react';
+import { KeyRound, LayoutGrid, List, LogOut, Settings, UploadCloud } from 'lucide-react';
 import { useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { logout, me } from '../api/auth';
@@ -8,6 +8,7 @@ const navItems = [
   { to: '/admin/categories', label: '分类管理', icon: List },
   { to: '/admin/settings', label: '站点设置', icon: Settings },
   { to: '/admin/import-export', label: '导入导出', icon: UploadCloud },
+  { to: '/admin/security', label: '账号安全', icon: KeyRound },
 ];
 
 export default function AdminLayout() {

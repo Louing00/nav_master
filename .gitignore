@@ -6,6 +6,7 @@ server/dist/
 server/static/dist/
 server/dev.db
 server/prisma/dev.db
+server/prisma/*-test.db
 web/tsconfig.tsbuildinfo
 data/*
 !data/.gitkeep

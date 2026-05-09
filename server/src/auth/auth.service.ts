@@ -53,6 +53,27 @@ export class AuthService {
     }
   }
 
+  async changePassword(userId: number, currentPassword: string, newPassword: string) {
+    if (currentPassword === newPassword) {
+      throw new UnauthorizedException('新密码不能与旧密码相同');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const ok = user ? await bcrypt.compare(currentPassword, user.passwordHash) : false;
+    if (!ok || !user) {
+      throw new UnauthorizedException('当前密码不正确');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash: await bcrypt.hash(newPassword, 12),
+      },
+    });
+
+    return { success: true };
+  }
+
   private assertNotLimited(key: string) {
     const bucket = this.attempts.get(key);
     if (!bucket) {

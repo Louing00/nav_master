@@ -1,7 +1,10 @@
-import { Body, Controller, Get, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { IsString, MinLength } from 'class-validator';
 import { AuthService } from './auth.service';
+import { AuthGuard } from '../common/guards/auth.guard';
+
+type AuthRequest = Request & { user: { id: number; username: string } };
 
 class LoginDto {
   @IsString()
@@ -10,6 +13,16 @@ class LoginDto {
   @IsString()
   @MinLength(6)
   password: string;
+}
+
+class ChangePasswordDto {
+  @IsString()
+  @MinLength(6)
+  currentPassword: string;
+
+  @IsString()
+  @MinLength(8)
+  newPassword: string;
 }
 
 @Controller('auth')
@@ -46,5 +59,17 @@ export class AuthController {
     }
 
     return this.authService.me(token);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('change-password')
+  async changePassword(
+    @Req() request: AuthRequest,
+    @Body() dto: ChangePasswordDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    await this.authService.changePassword(request.user.id, dto.currentPassword, dto.newPassword);
+    response.clearCookie('atlasgate_token', { path: '/' });
+    return { success: true, message: '密码已修改，请重新登录' };
   }
 }
