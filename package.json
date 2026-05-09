@@ -1,0 +1,22 @@
+{
+  "name": "atlasgate",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AtlasGate 星渡枢航 - 轻量级自托管系统导航枢纽",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w server\" \"npm run dev -w web\"",
+    "build": "npm run build -w web && npm run build -w server",
+    "start": "npm run start:prod -w server",
+    "prisma:generate": "npm run prisma:generate -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

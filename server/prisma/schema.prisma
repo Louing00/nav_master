@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  icon        String?
+  sortOrder   Int      @default(0)
+  visible     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  apps        App[]
+}
+
+model App {
+  id            Int          @id @default(autoincrement())
+  name          String
+  url           String       @unique
+  description   String?
+  icon          String?
+  categoryId    Int?
+  tags          String?
+  sortOrder     Int          @default(0)
+  visible       Boolean      @default(true)
+  openInNewTab  Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  category      Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  features      AppFeature[]
+}
+
+model AppFeature {
+  id          Int      @id @default(autoincrement())
+  appId       Int
+  title       String
+  description String?
+  anchor      String
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  app         App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+}
+
+model Setting {
+  key       String   @id
+  value     String?
+  updatedAt DateTime @updatedAt
+}

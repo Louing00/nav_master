@@ -1,0 +1,19 @@
+services:
+  atlasgate:
+    build: .
+    image: atlasgate:latest
+    container_name: atlasgate
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - NODE_ENV=production
+      - APP_PORT=8081
+      - DATABASE_URL=file:/data/nav.db
+      - JWT_SECRET=${JWT_SECRET:-please-change-this-secret}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-please-change-password}
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
+    volumes:
+      - ./data:/data

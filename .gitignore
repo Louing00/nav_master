@@ -1,0 +1,13 @@
+.DS_Store
+node_modules/
+web/node_modules/
+web/dist/
+server/dist/
+server/static/dist/
+server/dev.db
+server/prisma/dev.db
+web/tsconfig.tsbuildinfo
+data/*
+!data/.gitkeep
+.env
+*.log
