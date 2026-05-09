@@ -31,20 +31,22 @@ function serializeApp(app: any) {
 export class PublicService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async config() {
-    const rows = await this.prisma.setting.findMany();
+  async config(userId: number) {
+    await this.prisma.ensureUserWorkspace(userId);
+    const rows = await this.prisma.setting.findMany({ where: { userId } });
     return rows.reduce<Record<string, string>>((acc, row) => {
       acc[row.key] = row.value || '';
       return acc;
     }, {});
   }
 
-  async apps() {
+  async apps(userId: number) {
+    await this.prisma.ensureUserWorkspace(userId);
     const categories = await this.prisma.category.findMany({
-      where: { visible: true },
+      where: { visible: true, userId },
       include: {
         apps: {
-          where: { visible: true },
+          where: { visible: true, userId },
           include: { features: { orderBy: { sortOrder: 'asc' } } },
           orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
         },
@@ -63,7 +65,7 @@ export class PublicService {
       .filter((category) => category.apps.length > 0);
 
     const uncategorized = await this.prisma.app.findMany({
-      where: { visible: true, categoryId: null },
+      where: { visible: true, categoryId: null, userId },
       include: { features: { orderBy: { sortOrder: 'asc' } } },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
@@ -81,9 +83,9 @@ export class PublicService {
     return grouped;
   }
 
-  async appDetail(id: number) {
+  async appDetail(userId: number, id: number) {
     const app = await this.prisma.app.findFirst({
-      where: { id, visible: true },
+      where: { id, visible: true, userId },
       include: {
         category: true,
         features: { orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },

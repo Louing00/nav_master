@@ -9,7 +9,8 @@ client.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 && !window.location.pathname.startsWith('/admin/login')) {
-      window.location.href = '/admin/login';
+      const next = `${window.location.pathname}${window.location.search}`;
+      window.location.href = `/admin/login?next=${encodeURIComponent(next)}`;
     }
     return Promise.reject(error);
   },

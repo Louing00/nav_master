@@ -1,11 +1,12 @@
 import { Lock } from 'lucide-react';
 import { FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getErrorMessage } from '../api/client';
 import { login } from '../api/auth';
 
 export default function Login() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -15,7 +16,7 @@ export default function Login() {
     setError('');
     try {
       await login(username, password);
-      navigate('/admin/apps');
+      navigate(searchParams.get('next') || '/');
     } catch (err) {
       setError(getErrorMessage(err));
     }

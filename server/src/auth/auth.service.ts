@@ -29,6 +29,7 @@ export class AuthService {
       throw new UnauthorizedException('用户名或密码错误');
     }
 
+    await this.prisma.ensureUserWorkspace(user.id);
     this.attempts.delete(key);
     return { id: user.id, username: user.username };
   }
@@ -45,6 +46,7 @@ export class AuthService {
       const payload = this.jwtService.verify<{ id: number; username: string }>(token, {
         secret: process.env.JWT_SECRET || 'please-change-this-secret',
       });
+      await this.prisma.ensureUserWorkspace(payload.id);
       return { id: payload.id, username: payload.username };
     } catch {
       throw new UnauthorizedException('登录已失效');

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAppDto } from './dto/create-app.dto';
@@ -29,8 +29,8 @@ function serialize(app: any) {
 export class AppsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(filters: { keyword?: string; categoryId?: number; visible?: boolean }) {
-    const where: Prisma.AppWhereInput = {};
+  async list(userId: number, filters: { keyword?: string; categoryId?: number; visible?: boolean }) {
+    const where: Prisma.AppWhereInput = { userId };
     if (filters.categoryId) {
       where.categoryId = filters.categoryId;
     }
@@ -54,40 +54,54 @@ export class AppsService {
     return apps.map(serialize);
   }
 
-  async create(dto: CreateAppDto) {
+  async create(userId: number, dto: CreateAppDto) {
+    await this.ensureCategoryBelongsToUser(userId, dto.categoryId);
     const app = await this.prisma.app.create({
       data: {
         ...dto,
         tags: JSON.stringify(dto.tags || []),
+        userId,
       },
       include: { category: true, features: true },
     });
     return serialize(app);
   }
 
-  async update(id: number, dto: UpdateAppDto) {
-    await this.ensureExists(id);
+  async update(userId: number, id: number, dto: UpdateAppDto) {
+    await this.ensureExists(userId, id);
+    await this.ensureCategoryBelongsToUser(userId, dto.categoryId);
     const app = await this.prisma.app.update({
       where: { id },
       data: {
         ...dto,
-        tags: dto.tags ? JSON.stringify(dto.tags) : undefined,
+        tags: dto.tags === undefined ? undefined : JSON.stringify(dto.tags),
       },
       include: { category: true, features: true },
     });
     return serialize(app);
   }
 
-  async remove(id: number) {
-    await this.ensureExists(id);
+  async remove(userId: number, id: number) {
+    await this.ensureExists(userId, id);
     await this.prisma.app.delete({ where: { id } });
     return { success: true };
   }
 
-  private async ensureExists(id: number) {
-    const exists = await this.prisma.app.findUnique({ where: { id } });
+  private async ensureExists(userId: number, id: number) {
+    const exists = await this.prisma.app.findFirst({ where: { id, userId } });
     if (!exists) {
       throw new NotFoundException('应用不存在');
+    }
+  }
+
+  private async ensureCategoryBelongsToUser(userId: number, categoryId?: number | null) {
+    if (!categoryId) {
+      return;
+    }
+
+    const category = await this.prisma.category.findFirst({ where: { id: categoryId, userId } });
+    if (!category) {
+      throw new BadRequestException('分类不存在或无权使用');
     }
   }
 }

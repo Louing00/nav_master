@@ -13,6 +13,10 @@ model User {
   passwordHash String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  categories   Category[]
+  apps         App[]
+  settings     Setting[]
 }
 
 model Category {
@@ -22,16 +26,18 @@ model Category {
   icon        String?
   sortOrder   Int      @default(0)
   visible     Boolean  @default(true)
+  userId      Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   apps        App[]
 }
 
 model App {
   id            Int          @id @default(autoincrement())
   name          String
-  url           String       @unique
+  url           String
   description   String?
   icon          String?
   categoryId    Int?
@@ -39,11 +45,15 @@ model App {
   sortOrder     Int          @default(0)
   visible       Boolean      @default(true)
   openInNewTab  Boolean      @default(true)
+  userId        Int
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   category      Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   features      AppFeature[]
+
+  @@unique([userId, url])
 }
 
 model AppFeature {
@@ -60,7 +70,13 @@ model AppFeature {
 }
 
 model Setting {
-  key       String   @id
+  id        Int      @id @default(autoincrement())
+  key       String
   value     String?
+  userId    Int
   updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
 }

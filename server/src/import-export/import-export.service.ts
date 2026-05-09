@@ -48,11 +48,12 @@ function parseTags(tags: unknown): string {
 export class ImportExportService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async export() {
+  async export(userId: number) {
     const [settings, categories, apps] = await Promise.all([
-      this.prisma.setting.findMany(),
-      this.prisma.category.findMany({ orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] }),
+      this.prisma.setting.findMany({ where: { userId } }),
+      this.prisma.category.findMany({ where: { userId }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] }),
       this.prisma.app.findMany({
+        where: { userId },
         include: { category: true, features: { orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] } },
         orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
       }),
@@ -66,16 +67,33 @@ export class ImportExportService {
         acc[item.key] = item.value || '';
         return acc;
       }, {}),
-      categories,
-      apps: apps.map((app) => ({
-        ...app,
-        categoryName: app.category?.name,
-        tags: parseTags(app.tags) ? JSON.parse(parseTags(app.tags)) : [],
-      })),
+      categories: categories.map(({ userId: _userId, ...category }) => category),
+      apps: apps.map((app) => {
+        const { userId: _userId, category, ...payload } = app;
+        const cleanCategory = category
+          ? {
+              id: category.id,
+              name: category.name,
+              description: category.description,
+              icon: category.icon,
+              sortOrder: category.sortOrder,
+              visible: category.visible,
+              createdAt: category.createdAt,
+              updatedAt: category.updatedAt,
+            }
+          : null;
+
+        return {
+          ...payload,
+          category: cleanCategory,
+          categoryName: category?.name,
+          tags: parseTags(app.tags) ? JSON.parse(parseTags(app.tags)) : [],
+        };
+      }),
     };
   }
 
-  async import(mode: 'merge' | 'replace', data: Record<string, unknown>) {
+  async import(userId: number, mode: 'merge' | 'replace', data: Record<string, unknown>) {
     if (!data || typeof data !== 'object') {
       throw new BadRequestException('导入数据格式不正确');
     }
@@ -85,42 +103,40 @@ export class ImportExportService {
     const apps = Array.isArray(data.apps) ? (data.apps as ImportApp[]) : [];
 
     if (mode === 'replace') {
-      await this.prisma.appFeature.deleteMany();
-      await this.prisma.app.deleteMany();
-      await this.prisma.category.deleteMany();
+      await this.prisma.appFeature.deleteMany({ where: { app: { userId } } });
+      await this.prisma.app.deleteMany({ where: { userId } });
+      await this.prisma.category.deleteMany({ where: { userId } });
     }
 
     for (const [key, value] of Object.entries(settings)) {
       await this.prisma.setting.upsert({
-        where: { key },
+        where: { userId_key: { userId, key } },
         update: { value: String(value) },
-        create: { key, value: String(value) },
+        create: { key, value: String(value), userId },
       });
     }
 
     const categoryNameToId = new Map<string, number>();
+    const categoryIdToId = new Map<number, number>();
     for (const category of categories) {
       if (!category.name) {
         continue;
       }
-      const saved = await this.prisma.category.upsert({
-        where: { id: category.id || -1 },
-        update: {
-          name: category.name,
-          description: category.description,
-          icon: category.icon,
-          sortOrder: category.sortOrder || 0,
-          visible: category.visible ?? true,
-        },
-        create: {
-          name: category.name,
-          description: category.description,
-          icon: category.icon,
-          sortOrder: category.sortOrder || 0,
-          visible: category.visible ?? true,
-        },
-      });
+      const existing = category.id ? await this.prisma.category.findFirst({ where: { id: category.id, userId } }) : null;
+      const payload = {
+        name: category.name,
+        description: category.description,
+        icon: category.icon,
+        sortOrder: category.sortOrder || 0,
+        visible: category.visible ?? true,
+      };
+      const saved = existing
+        ? await this.prisma.category.update({ where: { id: existing.id }, data: payload })
+        : await this.prisma.category.create({ data: { ...payload, userId } });
       categoryNameToId.set(saved.name, saved.id);
+      if (category.id) {
+        categoryIdToId.set(category.id, saved.id);
+      }
     }
 
     for (const app of apps) {
@@ -128,9 +144,9 @@ export class ImportExportService {
         continue;
       }
 
-      const categoryId = app.categoryName ? categoryNameToId.get(app.categoryName) : app.categoryId;
+      const categoryId = app.categoryName ? categoryNameToId.get(app.categoryName) : app.categoryId ? categoryIdToId.get(app.categoryId) : undefined;
       const saved = await this.prisma.app.upsert({
-        where: { url: app.url },
+        where: { userId_url: { userId, url: app.url } },
         update: {
           name: app.name,
           description: app.description,
@@ -151,6 +167,7 @@ export class ImportExportService {
           sortOrder: app.sortOrder || 0,
           visible: app.visible ?? true,
           openInNewTab: app.openInNewTab ?? true,
+          userId,
         },
       });
 

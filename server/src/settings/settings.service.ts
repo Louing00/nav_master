@@ -5,15 +5,16 @@ import { PrismaService } from '../prisma/prisma.service';
 export class SettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getMap() {
-    const rows = await this.prisma.setting.findMany();
+  async getMap(userId: number) {
+    await this.prisma.ensureUserWorkspace(userId);
+    const rows = await this.prisma.setting.findMany({ where: { userId } });
     return rows.reduce<Record<string, string>>((acc, row) => {
       acc[row.key] = row.value || '';
       return acc;
     }, {});
   }
 
-  async update(settings: Record<string, string>) {
+  async update(userId: number, settings: Record<string, string>) {
     const entries = Object.entries(settings).filter(([key]) =>
       ['site_title', 'site_subtitle', 'logo', 'theme', 'footer_text'].includes(key),
     );
@@ -21,13 +22,13 @@ export class SettingsService {
     await Promise.all(
       entries.map(([key, value]) =>
         this.prisma.setting.upsert({
-          where: { key },
+          where: { userId_key: { userId, key } },
           update: { value },
-          create: { key, value },
+          create: { key, value, userId },
         }),
       ),
     );
 
-    return this.getMap();
+    return this.getMap(userId);
   }
 }

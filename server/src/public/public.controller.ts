@@ -1,22 +1,27 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
+import { AuthGuard } from '../common/guards/auth.guard';
 import { PublicService } from './public.service';
 
+type AuthRequest = Request & { user: { id: number; username: string } };
+
+@UseGuards(AuthGuard)
 @Controller('public')
 export class PublicController {
   constructor(private readonly publicService: PublicService) {}
 
   @Get('config')
-  config() {
-    return this.publicService.config();
+  config(@Req() request: AuthRequest) {
+    return this.publicService.config(request.user.id);
   }
 
   @Get('apps')
-  apps() {
-    return this.publicService.apps();
+  apps(@Req() request: AuthRequest) {
+    return this.publicService.apps(request.user.id);
   }
 
   @Get('apps/:id')
-  appDetail(@Param('id', ParseIntPipe) id: number) {
-    return this.publicService.appDetail(id);
+  appDetail(@Req() request: AuthRequest, @Param('id', ParseIntPipe) id: number) {
+    return this.publicService.appDetail(request.user.id, id);
   }
 }

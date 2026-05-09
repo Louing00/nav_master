@@ -1,8 +1,11 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { AppsService } from './apps.service';
 import { CreateAppDto } from './dto/create-app.dto';
 import { UpdateAppDto } from './dto/update-app.dto';
+
+type AuthRequest = Request & { user: { id: number; username: string } };
 
 @UseGuards(AuthGuard)
 @Controller('admin/apps')
@@ -10,8 +13,8 @@ export class AppsController {
   constructor(private readonly appsService: AppsService) {}
 
   @Get()
-  list(@Query('keyword') keyword?: string, @Query('categoryId') categoryId?: string, @Query('visible') visible?: string) {
-    return this.appsService.list({
+  list(@Req() request: AuthRequest, @Query('keyword') keyword?: string, @Query('categoryId') categoryId?: string, @Query('visible') visible?: string) {
+    return this.appsService.list(request.user.id, {
       keyword,
       categoryId: categoryId ? Number(categoryId) : undefined,
       visible: visible === undefined ? undefined : visible === 'true',
@@ -19,17 +22,17 @@ export class AppsController {
   }
 
   @Post()
-  create(@Body() dto: CreateAppDto) {
-    return this.appsService.create(dto);
+  create(@Req() request: AuthRequest, @Body() dto: CreateAppDto) {
+    return this.appsService.create(request.user.id, dto);
   }
 
   @Put(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAppDto) {
-    return this.appsService.update(id, dto);
+  update(@Req() request: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAppDto) {
+    return this.appsService.update(request.user.id, id, dto);
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.appsService.remove(id);
+  remove(@Req() request: AuthRequest, @Param('id', ParseIntPipe) id: number) {
+    return this.appsService.remove(request.user.id, id);
   }
 }

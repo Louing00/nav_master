@@ -15,7 +15,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   async onModuleInit() {
     await this.$connect();
     await this.ensureSchema();
-    await this.seedDefaults();
+    const owner = await this.ensureDefaultUser();
+    await this.assignExistingData(owner.id);
+    await this.ensureUserWorkspace(owner.id);
   }
 
   private async ensureSchema() {
@@ -36,8 +38,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         "icon" TEXT,
         "sortOrder" INTEGER NOT NULL DEFAULT 0,
         "visible" BOOLEAN NOT NULL DEFAULT true,
+        "userId" INTEGER,
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Category_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
       );
     `);
     await this.$executeRawUnsafe(`
@@ -52,12 +56,17 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         "sortOrder" INTEGER NOT NULL DEFAULT 0,
         "visible" BOOLEAN NOT NULL DEFAULT true,
         "openInNewTab" BOOLEAN NOT NULL DEFAULT true,
+        "userId" INTEGER,
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "App_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
         CONSTRAINT "App_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category" ("id") ON DELETE SET NULL ON UPDATE CASCADE
       );
     `);
-    await this.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "App_url_key" ON "App"("url");`);
+    await this.ensureColumn('Category', 'userId', '"userId" INTEGER');
+    await this.ensureColumn('App', 'userId', '"userId" INTEGER');
+    await this.$executeRawUnsafe(`DROP INDEX IF EXISTS "App_url_key";`);
+    await this.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "App_userId_url_key" ON "App"("userId", "url");`);
     await this.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "AppFeature" (
         "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -71,47 +80,55 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         CONSTRAINT "AppFeature_appId_fkey" FOREIGN KEY ("appId") REFERENCES "App" ("id") ON DELETE CASCADE ON UPDATE CASCADE
       );
     `);
-    await this.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "Setting" (
-        "key" TEXT NOT NULL PRIMARY KEY,
-        "value" TEXT,
-        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+    await this.ensureSettingSchema();
   }
 
-  private async seedDefaults() {
-    const userCount = await this.user.count();
-    if (userCount === 0) {
-      await this.user.create({
-        data: {
-          username: process.env.ADMIN_USERNAME || 'admin',
-          passwordHash: await bcrypt.hash(process.env.ADMIN_PASSWORD || 'please-change-password', 12),
-        },
-      });
+  private async ensureDefaultUser() {
+    const existing = await this.user.findFirst({ orderBy: { id: 'asc' } });
+    if (existing) {
+      return existing;
     }
 
+    return this.user.create({
+      data: {
+        username: process.env.ADMIN_USERNAME || 'admin',
+        passwordHash: await bcrypt.hash(process.env.ADMIN_PASSWORD || 'please-change-password', 12),
+      },
+    });
+  }
+
+  async ensureUserWorkspace(userId: number) {
     await Promise.all(
       Object.entries(settings).map(([key, value]) =>
         this.setting.upsert({
-          where: { key },
+          where: { userId_key: { userId, key } },
           update: {},
-          create: { key, value },
+          create: { key, value, userId },
         }),
       ),
     );
 
-    const categoryCount = await this.category.count();
+    const categoryCount = await this.category.count({ where: { userId } });
     if (categoryCount > 0) {
       return;
     }
 
+    await this.seedDefaultApps(userId);
+  }
+
+  private async assignExistingData(userId: number) {
+    await this.$executeRawUnsafe(`UPDATE "Category" SET "userId" = ${userId} WHERE "userId" IS NULL;`);
+    await this.$executeRawUnsafe(`UPDATE "App" SET "userId" = ${userId} WHERE "userId" IS NULL;`);
+  }
+
+  private async seedDefaultApps(userId: number) {
     const core = await this.category.create({
       data: {
         name: '核心系统',
         description: '日常使用频率最高的自研平台',
         icon: '◇',
         sortOrder: 1,
+        userId,
       },
     });
 
@@ -121,6 +138,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         description: '服务器、任务、资源与控制台入口',
         icon: '⌘',
         sortOrder: 2,
+        userId,
       },
     });
 
@@ -134,6 +152,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         tags: JSON.stringify(['文件传输', '局域网', '共享']),
         sortOrder: 1,
         openInNewTab: true,
+        userId,
         features: {
           create: [
             {
@@ -169,6 +188,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         tags: JSON.stringify(['服务器', '控制台', '运维']),
         sortOrder: 2,
         openInNewTab: true,
+        userId,
         features: {
           create: [
             {
@@ -193,5 +213,69 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         },
       },
     });
+  }
+
+  private async ensureColumn(table: string, column: string, definition: string) {
+    const columns = await this.$queryRawUnsafe<Array<{ name: string }>>(`PRAGMA table_info("${table}");`);
+    if (columns.some((item) => item.name === column)) {
+      return;
+    }
+
+    await this.$executeRawUnsafe(`ALTER TABLE "${table}" ADD COLUMN ${definition};`);
+  }
+
+  private async ensureSettingSchema() {
+    const columns = await this.$queryRawUnsafe<Array<{ name: string }>>(`PRAGMA table_info("Setting");`);
+    if (columns.length === 0) {
+      await this.$executeRawUnsafe(`
+        CREATE TABLE "Setting" (
+          "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+          "key" TEXT NOT NULL,
+          "value" TEXT,
+          "userId" INTEGER NOT NULL,
+          "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "Setting_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+        );
+      `);
+      await this.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "Setting_userId_key_key" ON "Setting"("userId", "key");`);
+      return;
+    }
+
+    const hasUserId = columns.some((item) => item.name === 'userId');
+    const hasId = columns.some((item) => item.name === 'id');
+    if (hasUserId && hasId) {
+      await this.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "Setting_userId_key_key" ON "Setting"("userId", "key");`);
+      return;
+    }
+
+    const owner = await this.user.findFirst({ orderBy: { id: 'asc' } });
+    if (!owner) {
+      await this.user.create({
+        data: {
+          username: process.env.ADMIN_USERNAME || 'admin',
+          passwordHash: await bcrypt.hash(process.env.ADMIN_PASSWORD || 'please-change-password', 12),
+        },
+      });
+    }
+
+    const fallbackUser = await this.user.findFirst({ orderBy: { id: 'asc' } });
+    const ownerId = fallbackUser?.id || 1;
+    await this.$executeRawUnsafe(`
+      CREATE TABLE "Setting_next" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "key" TEXT NOT NULL,
+        "value" TEXT,
+        "userId" INTEGER NOT NULL,
+        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Setting_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      );
+    `);
+    await this.$executeRawUnsafe(`
+      INSERT INTO "Setting_next" ("key", "value", "userId", "updatedAt")
+      SELECT "key", "value", ${ownerId}, "updatedAt" FROM "Setting";
+    `);
+    await this.$executeRawUnsafe(`DROP TABLE "Setting";`);
+    await this.$executeRawUnsafe(`ALTER TABLE "Setting_next" RENAME TO "Setting";`);
+    await this.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "Setting_userId_key_key" ON "Setting"("userId", "key");`);
   }
 }
