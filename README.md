@@ -64,7 +64,13 @@ http://服务器IP:8081/admin/login
 bash scripts/deploy.sh
 ```
 
-脚本会安装 Docker、拉取或更新仓库、生成 `.env`、构建镜像并启动容器。如果遇到旧的 `atlasgate` 容器名称冲突，脚本会移除旧容器再启动；数据库文件 `./data/nav.db` 不会被删除。
+脚本默认使用当前项目目录作为部署目录，数据库保存在该目录的 `./data/nav.db`。它会安装 Docker、拉取或更新仓库、生成 `.env`、构建镜像并启动容器。如果遇到旧的 `atlasgate` 容器名称冲突，脚本会移除旧容器再启动；数据库文件不会被删除。
+
+如果你确实想部署到指定目录，可以显式传入：
+
+```bash
+APP_DIR=/opt/atlasgate bash scripts/deploy.sh
+```
 
 ## 一键 Nginx
 

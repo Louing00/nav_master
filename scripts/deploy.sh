@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-/opt/atlasgate}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEFAULT_APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+APP_DIR="${APP_DIR:-$DEFAULT_APP_DIR}"
 REPO_URL="${REPO_URL:-https://github.com/Louing00/nav_master.git}"
 BRANCH="${BRANCH:-main}"
 
@@ -68,6 +70,8 @@ ensure_container_name_available() {
 
 main() {
   ensure_docker
+  echo "部署目录：$APP_DIR"
+  echo "数据库目录：$APP_DIR/data"
   ensure_repo
   ensure_env
   mkdir -p "$APP_DIR/data"
