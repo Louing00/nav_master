@@ -1,8 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DOMAIN="${DOMAIN:-nav.louing.site}"
 UPSTREAM="${UPSTREAM:-http://127.0.0.1:8081}"
+
+if [ -z "${DOMAIN:-}" ]; then
+  read -r -p "请输入要绑定的域名，例如 nav.example.com: " DOMAIN
+fi
+
+DOMAIN="$(echo "$DOMAIN" | xargs)"
+if [ -z "$DOMAIN" ]; then
+  echo "域名不能为空。"
+  exit 1
+fi
+
+if [[ ! "$DOMAIN" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$ ]]; then
+  echo "域名格式不正确：$DOMAIN"
+  exit 1
+fi
+
 CONF_PATH="/etc/nginx/sites-available/${DOMAIN}"
 ENABLED_PATH="/etc/nginx/sites-enabled/${DOMAIN}"
 
