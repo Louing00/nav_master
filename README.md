@@ -64,7 +64,7 @@ http://服务器IP:8081/admin/login
 bash scripts/deploy.sh
 ```
 
-脚本会安装 Docker、拉取或更新仓库、生成 `.env`、构建镜像并启动容器。
+脚本会安装 Docker、拉取或更新仓库、生成 `.env`、构建镜像并启动容器。如果遇到旧的 `atlasgate` 容器名称冲突，脚本会移除旧容器再启动；数据库文件 `./data/nav.db` 不会被删除。
 
 ## 一键 Nginx
 

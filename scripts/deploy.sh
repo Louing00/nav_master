@@ -55,12 +55,24 @@ EOF
   fi
 }
 
+ensure_container_name_available() {
+  if ! docker container inspect atlasgate >/dev/null 2>&1; then
+    return
+  fi
+
+  echo "检测到已存在的 atlasgate 容器，准备移除旧容器以避免名称冲突。"
+  echo "这只会删除容器本身，不会删除 ./data/nav.db。"
+  compose rm -sf atlasgate >/dev/null 2>&1 || true
+  docker rm -f atlasgate >/dev/null 2>&1 || true
+}
+
 main() {
   ensure_docker
   ensure_repo
   ensure_env
   mkdir -p "$APP_DIR/data"
   cd "$APP_DIR"
+  ensure_container_name_available
   compose up -d --build
   compose ps
   echo "AtlasGate 已启动：http://服务器IP:8081"
