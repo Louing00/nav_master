@@ -16,6 +16,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
     await this.$connect();
     await this.ensureSchema();
     const owner = await this.ensureDefaultUser();
+    await this.ensureAdminUser(owner.id);
     await this.assignExistingData(owner.id);
     await this.ensureUserWorkspace(owner.id);
   }
@@ -26,10 +27,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         "username" TEXT NOT NULL UNIQUE,
         "passwordHash" TEXT NOT NULL,
+        "isAdmin" BOOLEAN NOT NULL DEFAULT false,
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    await this.ensureColumn('User', 'isAdmin', '"isAdmin" BOOLEAN NOT NULL DEFAULT false');
     await this.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "Category" (
         "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -93,8 +96,16 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
       data: {
         username: process.env.ADMIN_USERNAME || 'admin',
         passwordHash: await bcrypt.hash(process.env.ADMIN_PASSWORD || 'please-change-password', 12),
+        isAdmin: true,
       },
     });
+  }
+
+  private async ensureAdminUser(userId: number) {
+    const adminCount = await this.user.count({ where: { isAdmin: true } });
+    if (adminCount === 0) {
+      await this.user.update({ where: { id: userId }, data: { isAdmin: true } });
+    }
   }
 
   async ensureUserWorkspace(userId: number) {
@@ -254,6 +265,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         data: {
           username: process.env.ADMIN_USERNAME || 'admin',
           passwordHash: await bcrypt.hash(process.env.ADMIN_PASSWORD || 'please-change-password', 12),
+          isAdmin: true,
         },
       });
     }

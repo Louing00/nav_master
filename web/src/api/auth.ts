@@ -5,6 +5,11 @@ export async function login(username: string, password: string) {
   return data;
 }
 
+export async function register(username: string, password: string) {
+  const { data } = await client.post('/auth/register', { username, password });
+  return data;
+}
+
 export async function logout() {
   const { data } = await client.post('/auth/logout');
   return data;

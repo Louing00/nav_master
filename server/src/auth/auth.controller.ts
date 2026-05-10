@@ -15,6 +15,15 @@ class LoginDto {
   password: string;
 }
 
+class RegisterDto {
+  @IsString()
+  username: string;
+
+  @IsString()
+  @MinLength(8)
+  password: string;
+}
+
 class ChangePasswordDto {
   @IsString()
   @MinLength(6)
@@ -43,6 +52,22 @@ export class AuthController {
     });
 
     return { success: true, message: '登录成功' };
+  }
+
+  @Post('register')
+  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
+    const user = await this.authService.register(dto.username, dto.password);
+    const token = await this.authService.sign(user);
+
+    response.cookie('atlasgate_token', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.COOKIE_SECURE === 'true',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+
+    return { success: true, message: '注册成功' };
   }
 
   @Post('logout')

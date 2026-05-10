@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -31,10 +31,32 @@ export class AuthService {
 
     await this.prisma.ensureUserWorkspace(user.id);
     this.attempts.delete(key);
-    return { id: user.id, username: user.username };
+    return { id: user.id, username: user.username, isAdmin: user.isAdmin };
   }
 
-  async sign(user: { id: number; username: string }) {
+  async register(username: string, password: string) {
+    const normalized = username.trim();
+    if (!/^[A-Za-z0-9_@.-]{3,32}$/.test(normalized)) {
+      throw new BadRequestException('用户名需为 3-32 位字母、数字或 _@.-');
+    }
+
+    const exists = await this.prisma.user.findUnique({ where: { username: normalized } });
+    if (exists) {
+      throw new ConflictException('用户名已存在');
+    }
+
+    const user = await this.prisma.user.create({
+      data: {
+        username: normalized,
+        passwordHash: await bcrypt.hash(password, 12),
+        isAdmin: false,
+      },
+    });
+    await this.prisma.ensureUserWorkspace(user.id);
+    return { id: user.id, username: user.username, isAdmin: user.isAdmin };
+  }
+
+  async sign(user: { id: number; username: string; isAdmin?: boolean }) {
     return this.jwtService.signAsync(user, {
       secret: process.env.JWT_SECRET || 'please-change-this-secret',
       expiresIn: process.env.JWT_EXPIRES_IN || '7d',
@@ -47,7 +69,11 @@ export class AuthService {
         secret: process.env.JWT_SECRET || 'please-change-this-secret',
       });
       await this.prisma.ensureUserWorkspace(payload.id);
-      return { id: payload.id, username: payload.username };
+      const user = await this.prisma.user.findUnique({ where: { id: payload.id } });
+      if (!user) {
+        throw new UnauthorizedException('登录已失效');
+      }
+      return { id: user.id, username: user.username, isAdmin: user.isAdmin };
     } catch {
       throw new UnauthorizedException('登录已失效');
     }

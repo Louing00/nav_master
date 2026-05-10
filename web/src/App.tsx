@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import AdminLayout from './pages/AdminLayout';
 import AdminApps from './pages/AdminApps';
 import AdminCategories from './pages/AdminCategories';
@@ -8,6 +9,7 @@ import AdminSettings from './pages/AdminSettings';
 import ImportExport from './pages/ImportExport';
 import SystemDetail from './pages/SystemDetail';
 import AdminSecurity from './pages/AdminSecurity';
+import AdminUsers from './pages/AdminUsers';
 
 export default function App() {
   return (
@@ -15,6 +17,7 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/systems/:id" element={<SystemDetail />} />
       <Route path="/admin/login" element={<Login />} />
+      <Route path="/admin/register" element={<Register />} />
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="/admin/apps" replace />} />
         <Route path="apps" element={<AdminApps />} />
@@ -22,6 +25,7 @@ export default function App() {
         <Route path="settings" element={<AdminSettings />} />
         <Route path="import-export" element={<ImportExport />} />
         <Route path="security" element={<AdminSecurity />} />
+        <Route path="users" element={<AdminUsers />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

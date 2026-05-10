@@ -1,0 +1,159 @@
+import { Pencil, Plus, Trash2, UserCog } from 'lucide-react';
+import { FormEvent, useEffect, useState } from 'react';
+import { createUser, deleteUser, fetchUsers, updateUser, type AdminUser } from '../api/users';
+import { getErrorMessage } from '../api/client';
+import { confirmDelete } from '../components/ConfirmDialog';
+
+const blank = { username: '', password: '', isAdmin: false };
+
+export default function AdminUsers() {
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [editing, setEditing] = useState<AdminUser | null>(null);
+  const [form, setForm] = useState(blank);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  async function load() {
+    setUsers(await fetchUsers());
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  function startEdit(user: AdminUser) {
+    setEditing(user);
+    setForm({ username: user.username, password: '', isAdmin: user.isAdmin });
+    setError('');
+    setMessage('');
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setError('');
+    setMessage('');
+
+    try {
+      if (editing) {
+        await updateUser(editing.id, {
+          isAdmin: form.isAdmin,
+          password: form.password || undefined,
+        });
+        setMessage('用户已更新');
+      } else {
+        await createUser(form);
+        setMessage('用户已创建');
+      }
+      setEditing(null);
+      setForm(blank);
+      await load();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    }
+  }
+
+  async function remove(user: AdminUser) {
+    if (!confirmDelete(`确认删除用户 ${user.username} 吗？该用户的导航数据也会被删除。`)) {
+      return;
+    }
+
+    try {
+      await deleteUser(user.id);
+      await load();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    }
+  }
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
+      <form onSubmit={submit} className="surface rounded-lg p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <UserCog size={22} className="text-mint" />
+            <h1 className="text-xl font-semibold">{editing ? '编辑用户' : '新增用户'}</h1>
+          </div>
+          <button className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-3 py-2 text-sm font-semibold text-white" type="submit">
+            <Plus size={16} />
+            保存
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-4">
+          <label>
+            <span className="admin-label">用户名</span>
+            <input
+              className="admin-input mt-1"
+              value={form.username}
+              onChange={(event) => setForm({ ...form, username: event.target.value })}
+              disabled={Boolean(editing)}
+              required
+            />
+          </label>
+          <label>
+            <span className="admin-label">{editing ? '重置密码' : '密码'}</span>
+            <input
+              className="admin-input mt-1"
+              type="password"
+              value={form.password}
+              onChange={(event) => setForm({ ...form, password: event.target.value })}
+              minLength={8}
+              required={!editing}
+              placeholder={editing ? '留空则不修改' : ''}
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.isAdmin} onChange={(event) => setForm({ ...form, isAdmin: event.target.checked })} />
+            管理员
+          </label>
+          {editing && (
+            <button type="button" className="text-left text-sm text-slate-500 hover:text-mint" onClick={() => { setEditing(null); setForm(blank); }}>
+              取消编辑
+            </button>
+          )}
+          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200">{error}</p>}
+          {message && <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">{message}</p>}
+        </div>
+      </form>
+
+      <section className="surface overflow-hidden rounded-lg">
+        <div className="border-b border-black/10 p-5 dark:border-white/10">
+          <h2 className="text-xl font-semibold">用户列表</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+              <tr>
+                <th className="px-5 py-3">用户</th>
+                <th className="px-5 py-3">权限</th>
+                <th className="px-5 py-3">数据</th>
+                <th className="px-5 py-3">创建时间</th>
+                <th className="px-5 py-3 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id} className="border-t border-black/10 dark:border-white/10">
+                  <td className="px-5 py-4 font-medium">{user.username}</td>
+                  <td className="px-5 py-4">{user.isAdmin ? '管理员' : '普通用户'}</td>
+                  <td className="px-5 py-4 text-slate-500">{user.categoryCount} 分类 / {user.appCount} 应用</td>
+                  <td className="px-5 py-4 text-slate-500">{new Date(user.createdAt).toLocaleString()}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex justify-end gap-2">
+                      <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(user)} title="编辑">
+                        <Pencil size={16} />
+                      </button>
+                      <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(user)} title="删除">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}

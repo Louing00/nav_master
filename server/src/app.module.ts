@@ -8,6 +8,7 @@ import { AppsModule } from './apps/apps.module';
 import { CategoriesModule } from './categories/categories.module';
 import { SettingsModule } from './settings/settings.module';
 import { ImportExportModule } from './import-export/import-export.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ImportExportModule } from './import-export/import-export.module';
     CategoriesModule,
     SettingsModule,
     ImportExportModule,
+    UsersModule,
   ],
 })
 export class AppModule {}
