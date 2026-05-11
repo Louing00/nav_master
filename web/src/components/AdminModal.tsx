@@ -11,8 +11,8 @@ type Props = {
 
 export default function AdminModal({ title, children, footer, onClose, maxWidth = 'max-w-2xl' }: Props) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
-      <div className={`surface max-h-[calc(100vh-3rem)] w-full ${maxWidth} overflow-y-auto rounded-lg p-5`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#172033]/45 px-4 py-6 backdrop-blur-sm dark:bg-slate-950/70">
+      <div className={`max-h-[calc(100vh-3rem)] w-full ${maxWidth} overflow-y-auto rounded-lg border border-black/10 bg-[#f6f3ec] p-5 shadow-xl dark:border-white/10 dark:bg-slate-900`}>
         <div className="flex items-center justify-between gap-4 border-b border-black/10 pb-4 dark:border-white/10">
           <h2 className="text-xl font-semibold">{title}</h2>
           <button
