@@ -1,4 +1,4 @@
-import { Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { GripVertical, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createApp, deleteApp, fetchAdminApps, fetchCategories, updateApp } from '../api/admin';
 import { getErrorMessage } from '../api/client';
@@ -19,6 +19,14 @@ const blank = {
   openInNewTab: true,
 };
 
+type AppGroup = {
+  id: number | null;
+  name: string;
+  icon?: string | null;
+  description?: string | null;
+  apps: NavApp[];
+};
+
 export default function AdminApps() {
   const [apps, setApps] = useState<NavApp[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
@@ -27,6 +35,8 @@ export default function AdminApps() {
   const [keyword, setKeyword] = useState('');
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [draggingAppId, setDraggingAppId] = useState<number | null>(null);
+  const [sortError, setSortError] = useState('');
 
   async function load() {
     const [appRows, categoryRows] = await Promise.all([fetchAdminApps(), fetchCategories()]);
@@ -40,8 +50,36 @@ export default function AdminApps() {
 
   const filtered = useMemo(() => {
     const q = keyword.trim().toLowerCase();
-    return q ? apps.filter((app) => [app.name, app.description, ...app.tags].join(' ').toLowerCase().includes(q)) : apps;
+    const rows = q ? apps.filter((app) => [app.name, app.description, ...app.tags].join(' ').toLowerCase().includes(q)) : apps;
+    return [...rows].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0) || a.id - b.id);
   }, [apps, keyword]);
+
+  const groupedApps = useMemo<AppGroup[]>(() => {
+    const categoryGroups: AppGroup[] = categories
+      .map((category) => ({
+        id: category.id,
+        name: category.name,
+        icon: category.icon,
+        description: category.description,
+        apps: filtered.filter((app) => app.categoryId === category.id),
+      }))
+      .filter((group) => group.apps.length > 0);
+
+    const uncategorized = filtered.filter((app) => !app.categoryId);
+    if (uncategorized.length) {
+      categoryGroups.push({
+        id: null,
+        name: '未分类',
+        icon: '·',
+        description: '尚未归类的应用',
+        apps: uncategorized,
+      });
+    }
+
+    return categoryGroups;
+  }, [categories, filtered]);
+
+  const canDragSort = keyword.trim().length === 0;
 
   function startCreate() {
     setEditing(null);
@@ -108,6 +146,46 @@ export default function AdminApps() {
     await load();
   }
 
+  async function reorderApp(group: AppGroup, sourceAppId: number, targetAppId: number) {
+    if (!canDragSort || sourceAppId === targetAppId) {
+      return;
+    }
+
+    const sourceIndex = group.apps.findIndex((app) => app.id === sourceAppId);
+    const targetIndex = group.apps.findIndex((app) => app.id === targetAppId);
+    if (sourceIndex < 0 || targetIndex < 0) {
+      return;
+    }
+
+    const nextGroupApps = [...group.apps];
+    const [moved] = nextGroupApps.splice(sourceIndex, 1);
+    nextGroupApps.splice(targetIndex, 0, moved);
+
+    const nextApps = apps.map((app) => {
+      const groupAppIndex = nextGroupApps.findIndex((item) => item.id === app.id);
+      return groupAppIndex >= 0 ? { ...app, sortOrder: (groupAppIndex + 1) * 10 } : app;
+    });
+
+    setSortError('');
+    setApps(nextApps);
+
+    try {
+      await Promise.all(
+        nextGroupApps.map((app, index) =>
+          updateApp(app.id, {
+            sortOrder: (index + 1) * 10,
+          }),
+        ),
+      );
+      await load();
+    } catch (err) {
+      setSortError(getErrorMessage(err));
+      await load();
+    } finally {
+      setDraggingAppId(null);
+    }
+  }
+
   return (
     <div className="grid gap-6">
       <section className="surface overflow-hidden rounded-lg">
@@ -128,38 +206,99 @@ export default function AdminApps() {
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-              <tr>
-                <th className="px-5 py-3">名称</th>
-                <th className="px-5 py-3">地址</th>
-                <th className="px-5 py-3">状态</th>
-                <th className="px-5 py-3">排序</th>
-                <th className="px-5 py-3 text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((app) => (
-                <tr key={app.id} className="border-t border-black/10 dark:border-white/10">
-                  <td className="px-5 py-4 font-medium">{app.icon} {app.name}</td>
-                  <td className="max-w-xs truncate px-5 py-4 text-slate-500">{app.url}</td>
-                  <td className="px-5 py-4">{app.visible ? '显示' : '隐藏'}</td>
-                  <td className="px-5 py-4">{app.sortOrder}</td>
-                  <td className="px-5 py-4">
-                    <div className="flex justify-end gap-2">
-                      <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(app)} title="编辑">
-                        <Pencil size={16} />
-                      </button>
-                      <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(app.id)} title="删除">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {sortError && <p className="mx-5 mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200">{sortError}</p>}
+        {!canDragSort && <p className="mx-5 mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">清空搜索后可拖拽排序。</p>}
+        <div className="grid gap-5 p-5">
+          {groupedApps.map((group) => (
+            <section key={group.id ?? 'uncategorized'} className="overflow-hidden rounded-lg border border-black/10 bg-white/70 dark:border-white/10 dark:bg-slate-950/40">
+              <div className="flex items-center justify-between gap-4 border-b border-black/10 px-4 py-3 dark:border-white/10">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg text-mint">{group.icon || '·'}</span>
+                    <h2 className="font-semibold">{group.name}</h2>
+                  </div>
+                  {group.description && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{group.description}</p>}
+                </div>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{group.apps.length} 个应用</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[820px] text-left text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                    <tr>
+                      <th className="w-12 px-4 py-3"></th>
+                      <th className="px-4 py-3">名称</th>
+                      <th className="px-4 py-3">地址</th>
+                      <th className="px-4 py-3">状态</th>
+                      <th className="px-4 py-3">排序</th>
+                      <th className="px-4 py-3 text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.apps.map((app) => (
+                      <tr
+                        key={app.id}
+                        draggable={canDragSort}
+                        onDragStart={(event) => {
+                          if (!canDragSort) {
+                            event.preventDefault();
+                            return;
+                          }
+                          setDraggingAppId(app.id);
+                          event.dataTransfer.effectAllowed = 'move';
+                          event.dataTransfer.setData('text/plain', String(app.id));
+                        }}
+                        onDragOver={(event) => {
+                          if (canDragSort && draggingAppId && draggingAppId !== app.id) {
+                            event.preventDefault();
+                            event.dataTransfer.dropEffect = 'move';
+                          }
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const sourceId = Number(event.dataTransfer.getData('text/plain') || draggingAppId);
+                          reorderApp(group, sourceId, app.id);
+                        }}
+                        onDragEnd={() => setDraggingAppId(null)}
+                        className={`border-t border-black/10 transition dark:border-white/10 ${
+                          draggingAppId === app.id ? 'bg-mint/10 opacity-70' : 'bg-transparent'
+                        } ${canDragSort ? 'cursor-move hover:bg-slate-50 dark:hover:bg-slate-900/80' : ''}`}
+                      >
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 ${
+                              canDragSort ? 'cursor-grab hover:bg-slate-100 hover:text-mint active:cursor-grabbing dark:hover:bg-slate-800' : 'opacity-40'
+                            }`}
+                            title={canDragSort ? '拖拽排序' : '清空搜索后可排序'}
+                          >
+                            <GripVertical size={17} />
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 font-medium">{app.icon} {app.name}</td>
+                        <td className="max-w-xs truncate px-4 py-4 text-slate-500">{app.url}</td>
+                        <td className="px-4 py-4">{app.visible ? '显示' : '隐藏'}</td>
+                        <td className="px-4 py-4">{app.sortOrder}</td>
+                        <td className="px-4 py-4">
+                          <div className="flex justify-end gap-2">
+                            <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(app)} title="编辑">
+                              <Pencil size={16} />
+                            </button>
+                            <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(app.id)} title="删除">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ))}
+          {groupedApps.length === 0 && (
+            <div className="rounded-lg border border-dashed border-black/15 px-6 py-10 text-center text-sm text-slate-500 dark:border-white/15 dark:text-slate-400">
+              暂无应用
+            </div>
+          )}
         </div>
       </section>
 
