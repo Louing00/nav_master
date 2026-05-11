@@ -1,6 +1,7 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { createCategory, deleteCategory, fetchCategories, updateCategory } from '../api/admin';
+import AdminModal from '../components/AdminModal';
 import { confirmDelete } from '../components/ConfirmDialog';
 import type { AdminCategory } from '../types/category';
 
@@ -10,6 +11,7 @@ export default function AdminCategories() {
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [editing, setEditing] = useState<AdminCategory | null>(null);
   const [form, setForm] = useState(blank);
+  const [modalOpen, setModalOpen] = useState(false);
 
   async function load() {
     setCategories(await fetchCategories());
@@ -26,9 +28,14 @@ export default function AdminCategories() {
     } else {
       await createCategory(form);
     }
+    closeModal();
+    await load();
+  }
+
+  function startCreate() {
     setEditing(null);
     setForm(blank);
-    await load();
+    setModalOpen(true);
   }
 
   function startEdit(category: AdminCategory) {
@@ -40,6 +47,13 @@ export default function AdminCategories() {
       sortOrder: category.sortOrder,
       visible: category.visible,
     });
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setEditing(null);
+    setForm(blank);
+    setModalOpen(false);
   }
 
   async function remove(id: number) {
@@ -51,49 +65,21 @@ export default function AdminCategories() {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
-      <form onSubmit={submit} className="surface rounded-lg p-5">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">{editing ? '编辑分类' : '新增分类'}</h1>
-          <button className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-3 py-2 text-sm font-semibold text-white" type="submit">
-            <Plus size={16} />
-            保存
-          </button>
-        </div>
-        <div className="mt-5 grid gap-4">
-          <label>
-            <span className="admin-label">名称</span>
-            <input className="admin-input mt-1" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-          </label>
-          <label>
-            <span className="admin-label">描述</span>
-            <textarea className="admin-input mt-1 min-h-20" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label>
-              <span className="admin-label">图标</span>
-              <input className="admin-input mt-1" value={form.icon} onChange={(event) => setForm({ ...form, icon: event.target.value })} />
-            </label>
-            <label>
-              <span className="admin-label">排序</span>
-              <input className="admin-input mt-1" type="number" value={form.sortOrder} onChange={(event) => setForm({ ...form, sortOrder: Number(event.target.value) })} />
-            </label>
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.visible} onChange={(event) => setForm({ ...form, visible: event.target.checked })} />
-            前台显示
-          </label>
-          {editing && (
-            <button type="button" className="text-left text-sm text-slate-500 hover:text-mint" onClick={() => { setEditing(null); setForm(blank); }}>
-              取消编辑
-            </button>
-          )}
-        </div>
-      </form>
-
+    <div className="grid gap-6">
       <section className="surface overflow-hidden rounded-lg">
-        <div className="border-b border-black/10 p-5 dark:border-white/10">
-          <h2 className="text-xl font-semibold">分类列表</h2>
+        <div className="flex flex-col gap-3 border-b border-black/10 p-5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-xl font-semibold">分类列表</h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">管理当前用户的导航分组</p>
+          </div>
+          <button
+            type="button"
+            onClick={startCreate}
+            className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-mint px-3 py-2 text-sm font-semibold text-white hover:bg-ink"
+          >
+            <Plus size={16} />
+            新增分类
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left text-sm">
@@ -129,6 +115,50 @@ export default function AdminCategories() {
           </table>
         </div>
       </section>
+
+      {modalOpen && (
+        <form onSubmit={submit}>
+          <AdminModal
+            title={editing ? '编辑分类' : '新增分类'}
+            onClose={closeModal}
+            maxWidth="max-w-xl"
+            footer={
+              <>
+                <button type="button" className="focus-ring rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={closeModal}>
+                  取消
+                </button>
+                <button className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white hover:bg-ink" type="submit">
+                  <Save size={16} />
+                  保存
+                </button>
+              </>
+            }
+          >
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <label>
+                <span className="admin-label">名称</span>
+                <input className="admin-input mt-1" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} autoFocus />
+              </label>
+              <label>
+                <span className="admin-label">图标</span>
+                <input className="admin-input mt-1" value={form.icon} onChange={(event) => setForm({ ...form, icon: event.target.value })} />
+              </label>
+              <label className="sm:col-span-2">
+                <span className="admin-label">描述</span>
+                <textarea className="admin-input mt-1 min-h-20" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
+              </label>
+              <label>
+                <span className="admin-label">排序</span>
+                <input className="admin-input mt-1" type="number" value={form.sortOrder} onChange={(event) => setForm({ ...form, sortOrder: Number(event.target.value) })} />
+              </label>
+              <label className="flex items-center gap-2 pt-6 text-sm">
+                <input type="checkbox" checked={form.visible} onChange={(event) => setForm({ ...form, visible: event.target.checked })} />
+                前台显示
+              </label>
+            </div>
+          </AdminModal>
+        </form>
+      )}
     </div>
   );
 }

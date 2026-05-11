@@ -1,7 +1,8 @@
-import { Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createApp, deleteApp, fetchAdminApps, fetchCategories, updateApp } from '../api/admin';
 import { getErrorMessage } from '../api/client';
+import AdminModal from '../components/AdminModal';
 import { confirmDelete } from '../components/ConfirmDialog';
 import type { NavApp } from '../types/app';
 import type { AdminCategory } from '../types/category';
@@ -163,20 +164,22 @@ export default function AdminApps() {
       </section>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
-          <form onSubmit={submit} className="surface max-h-[calc(100vh-3rem)] w-full max-w-2xl overflow-y-auto rounded-lg p-5">
-            <div className="flex items-center justify-between gap-4 border-b border-black/10 pb-4 dark:border-white/10">
-              <h2 className="text-xl font-semibold">{editing ? '编辑应用' : '新增应用'}</h2>
-              <button
-                type="button"
-                onClick={closeModal}
-                className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-ink dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
-                title="关闭"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
+        <form onSubmit={submit}>
+          <AdminModal
+            title={editing ? '编辑应用' : '新增应用'}
+            onClose={closeModal}
+            footer={
+              <>
+                <button type="button" className="focus-ring rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={closeModal}>
+                  取消
+                </button>
+                <button className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white hover:bg-ink" type="submit">
+                  <Save size={16} />
+                  保存
+                </button>
+              </>
+            }
+          >
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <label className="sm:col-span-1">
                 <span className="admin-label">系统名称</span>
@@ -229,18 +232,8 @@ export default function AdminApps() {
               </div>
               {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200 sm:col-span-2">{error}</p>}
             </div>
-
-            <div className="mt-6 flex justify-end gap-2 border-t border-black/10 pt-4 dark:border-white/10">
-              <button type="button" className="focus-ring rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={closeModal}>
-                取消
-              </button>
-              <button className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white hover:bg-ink" type="submit">
-                <Save size={16} />
-                保存
-              </button>
-            </div>
-          </form>
-        </div>
+          </AdminModal>
+        </form>
       )}
     </div>
   );

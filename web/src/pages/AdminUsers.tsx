@@ -1,7 +1,8 @@
-import { Pencil, Plus, Trash2, UserCog } from 'lucide-react';
+import { Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { createUser, deleteUser, fetchUsers, updateUser, type AdminUser } from '../api/users';
 import { getErrorMessage } from '../api/client';
+import AdminModal from '../components/AdminModal';
 import { confirmDelete } from '../components/ConfirmDialog';
 
 const blank = { username: '', password: '', isAdmin: false };
@@ -12,6 +13,7 @@ export default function AdminUsers() {
   const [form, setForm] = useState(blank);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
 
   async function load() {
     setUsers(await fetchUsers());
@@ -26,6 +28,22 @@ export default function AdminUsers() {
     setForm({ username: user.username, password: '', isAdmin: user.isAdmin });
     setError('');
     setMessage('');
+    setModalOpen(true);
+  }
+
+  function startCreate() {
+    setEditing(null);
+    setForm(blank);
+    setError('');
+    setMessage('');
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setEditing(null);
+    setForm(blank);
+    setError('');
+    setModalOpen(false);
   }
 
   async function submit(event: FormEvent) {
@@ -44,8 +62,7 @@ export default function AdminUsers() {
         await createUser(form);
         setMessage('用户已创建');
       }
-      setEditing(null);
-      setForm(blank);
+      closeModal();
       await load();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -66,60 +83,24 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
-      <form onSubmit={submit} className="surface rounded-lg p-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <UserCog size={22} className="text-mint" />
-            <h1 className="text-xl font-semibold">{editing ? '编辑用户' : '新增用户'}</h1>
+    <div className="grid gap-6">
+      <section className="surface overflow-hidden rounded-lg">
+        <div className="flex flex-col gap-3 border-b border-black/10 p-5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-xl font-semibold">用户列表</h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">管理员可统一维护账号和权限</p>
           </div>
-          <button className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-3 py-2 text-sm font-semibold text-white" type="submit">
+          <button
+            type="button"
+            onClick={startCreate}
+            className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-mint px-3 py-2 text-sm font-semibold text-white hover:bg-ink"
+          >
             <Plus size={16} />
-            保存
+            新增用户
           </button>
         </div>
-
-        <div className="mt-5 grid gap-4">
-          <label>
-            <span className="admin-label">用户名</span>
-            <input
-              className="admin-input mt-1"
-              value={form.username}
-              onChange={(event) => setForm({ ...form, username: event.target.value })}
-              disabled={Boolean(editing)}
-              required
-            />
-          </label>
-          <label>
-            <span className="admin-label">{editing ? '重置密码' : '密码'}</span>
-            <input
-              className="admin-input mt-1"
-              type="password"
-              value={form.password}
-              onChange={(event) => setForm({ ...form, password: event.target.value })}
-              minLength={8}
-              required={!editing}
-              placeholder={editing ? '留空则不修改' : ''}
-            />
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.isAdmin} onChange={(event) => setForm({ ...form, isAdmin: event.target.checked })} />
-            管理员
-          </label>
-          {editing && (
-            <button type="button" className="text-left text-sm text-slate-500 hover:text-mint" onClick={() => { setEditing(null); setForm(blank); }}>
-              取消编辑
-            </button>
-          )}
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200">{error}</p>}
-          {message && <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">{message}</p>}
-        </div>
-      </form>
-
-      <section className="surface overflow-hidden rounded-lg">
-        <div className="border-b border-black/10 p-5 dark:border-white/10">
-          <h2 className="text-xl font-semibold">用户列表</h2>
-        </div>
+        {message && <p className="mx-5 mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">{message}</p>}
+        {error && !modalOpen && <p className="mx-5 mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200">{error}</p>}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
@@ -154,6 +135,58 @@ export default function AdminUsers() {
           </table>
         </div>
       </section>
+
+      {modalOpen && (
+        <form onSubmit={submit}>
+          <AdminModal
+            title={editing ? '编辑用户' : '新增用户'}
+            onClose={closeModal}
+            maxWidth="max-w-xl"
+            footer={
+              <>
+                <button type="button" className="focus-ring rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={closeModal}>
+                  取消
+                </button>
+                <button className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white hover:bg-ink" type="submit">
+                  <Save size={16} />
+                  保存
+                </button>
+              </>
+            }
+          >
+            <div className="mt-5 grid gap-4">
+              <label>
+                <span className="admin-label">用户名</span>
+                <input
+                  className="admin-input mt-1"
+                  value={form.username}
+                  onChange={(event) => setForm({ ...form, username: event.target.value })}
+                  disabled={Boolean(editing)}
+                  required
+                  autoFocus
+                />
+              </label>
+              <label>
+                <span className="admin-label">{editing ? '重置密码' : '密码'}</span>
+                <input
+                  className="admin-input mt-1"
+                  type="password"
+                  value={form.password}
+                  onChange={(event) => setForm({ ...form, password: event.target.value })}
+                  minLength={8}
+                  required={!editing}
+                  placeholder={editing ? '留空则不修改' : ''}
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={form.isAdmin} onChange={(event) => setForm({ ...form, isAdmin: event.target.checked })} />
+                管理员
+              </label>
+              {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200">{error}</p>}
+            </div>
+          </AdminModal>
+        </form>
+      )}
     </div>
   );
 }
