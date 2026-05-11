@@ -46,7 +46,7 @@ export default function Home() {
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-ink text-2xl text-white dark:bg-white dark:text-ink">
+              <div className="flex h-12 w-12 items-center justify-center text-4xl text-ink dark:text-white">
                 {settings.logo || '✦'}
               </div>
               <div>

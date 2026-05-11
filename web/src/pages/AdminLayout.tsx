@@ -33,7 +33,7 @@ export default function AdminLayout() {
       <div className="grid min-h-screen lg:grid-cols-[240px_1fr]">
         <aside className="border-b border-black/10 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900 lg:border-b-0 lg:border-r">
           <div className="flex items-center gap-3 px-2 py-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-ink text-white dark:bg-white dark:text-ink">✦</div>
+            <div className="flex h-10 w-10 items-center justify-center text-3xl text-ink dark:text-white">✦</div>
             <div>
               <p className="font-semibold">星渡枢航</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">{currentUser?.username || 'Admin'}</p>
