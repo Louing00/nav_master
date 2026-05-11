@@ -2,6 +2,8 @@ import { Home, KeyRound, LayoutGrid, List, LogOut, Settings, UploadCloud, Users 
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { logout, me } from '../api/auth';
+import { fetchPublicConfig } from '../api/public';
+import type { SiteSettings } from '../types/setting';
 
 const navItems = [
   { to: '/admin/apps', label: '应用管理', icon: LayoutGrid },
@@ -18,9 +20,11 @@ const adminNavItems = [
 export default function AdminLayout() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<{ username: string; isAdmin?: boolean } | null>(null);
+  const [settings, setSettings] = useState<SiteSettings>({});
 
   useEffect(() => {
     me().then(setCurrentUser).catch(() => navigate('/admin/login'));
+    fetchPublicConfig().then(setSettings).catch(() => undefined);
   }, [navigate]);
 
   async function handleLogout() {
@@ -33,9 +37,9 @@ export default function AdminLayout() {
       <div className="grid min-h-screen lg:grid-cols-[240px_1fr]">
         <aside className="border-b border-black/10 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900 lg:border-b-0 lg:border-r">
           <div className="flex items-center gap-3 px-2 py-3">
-            <div className="flex h-10 w-10 items-center justify-center text-3xl text-ink dark:text-white">✦</div>
+            <div className="flex h-10 w-10 items-center justify-center text-3xl text-ink dark:text-white">{settings.logo || '✦'}</div>
             <div>
-              <p className="font-semibold">星渡枢航</p>
+              <p className="font-semibold">{settings.site_title || '星渡枢航'}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">{currentUser?.username || 'Admin'}</p>
             </div>
           </div>
