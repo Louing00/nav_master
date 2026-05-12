@@ -26,6 +26,16 @@ export class AppsController {
     return this.appsService.create(request.user.id, dto);
   }
 
+  @Post('health-check')
+  checkAllHealth(@Req() request: AuthRequest) {
+    return this.appsService.checkAllHealth(request.user.id);
+  }
+
+  @Post(':id/health-check')
+  checkHealth(@Req() request: AuthRequest, @Param('id', ParseIntPipe) id: number) {
+    return this.appsService.checkHealth(request.user.id, id);
+  }
+
   @Put(':id')
   update(@Req() request: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAppDto) {
     return this.appsService.update(request.user.id, id, dto);

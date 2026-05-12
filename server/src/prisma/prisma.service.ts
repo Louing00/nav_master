@@ -59,6 +59,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         "sortOrder" INTEGER NOT NULL DEFAULT 0,
         "visible" BOOLEAN NOT NULL DEFAULT true,
         "openInNewTab" BOOLEAN NOT NULL DEFAULT true,
+        "healthStatus" TEXT NOT NULL DEFAULT 'unknown',
+        "healthCheckedAt" DATETIME,
+        "healthLatencyMs" INTEGER,
+        "healthError" TEXT,
+        "healthEnabled" BOOLEAN NOT NULL DEFAULT true,
         "userId" INTEGER,
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -68,6 +73,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
     `);
     await this.ensureColumn('Category', 'userId', '"userId" INTEGER');
     await this.ensureColumn('App', 'userId', '"userId" INTEGER');
+    await this.ensureColumn('App', 'healthStatus', '"healthStatus" TEXT NOT NULL DEFAULT \'unknown\'');
+    await this.ensureColumn('App', 'healthCheckedAt', '"healthCheckedAt" DATETIME');
+    await this.ensureColumn('App', 'healthLatencyMs', '"healthLatencyMs" INTEGER');
+    await this.ensureColumn('App', 'healthError', '"healthError" TEXT');
+    await this.ensureColumn('App', 'healthEnabled', '"healthEnabled" BOOLEAN NOT NULL DEFAULT true');
     await this.$executeRawUnsafe(`DROP INDEX IF EXISTS "App_url_key";`);
     await this.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "App_userId_url_key" ON "App"("userId", "url");`);
     await this.$executeRawUnsafe(`

@@ -38,4 +38,8 @@ export class CreateAppDto {
   @IsOptional()
   @IsBoolean()
   openInNewTab?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  healthEnabled?: boolean;
 }

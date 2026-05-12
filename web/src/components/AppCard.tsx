@@ -1,4 +1,5 @@
 import { ExternalLink } from 'lucide-react';
+import HealthBadge from './HealthBadge';
 import type { NavApp } from '../types/app';
 
 type Props = {
@@ -18,6 +19,7 @@ export default function AppCard({ app, compact = false }: Props) {
       >
         <span className="flex h-10 w-10 shrink-0 items-center justify-center text-2xl text-mint">{app.icon || '⌁'}</span>
         <h3 className="min-w-0 truncate text-base font-semibold text-ink dark:text-white">{app.name}</h3>
+        <HealthBadge app={app} compact />
       </a>
     );
   }
@@ -35,7 +37,10 @@ export default function AppCard({ app, compact = false }: Props) {
             {app.icon || '⌁'}
           </div>
           <div className="min-w-0">
-            <h3 className="truncate text-lg font-semibold text-ink dark:text-white">{app.name}</h3>
+            <div className="flex min-w-0 items-center gap-2">
+              <h3 className="truncate text-lg font-semibold text-ink dark:text-white">{app.name}</h3>
+              <HealthBadge app={app} />
+            </div>
             <p className="mt-2 line-clamp-2 max-w-full text-sm leading-6 text-slate-600 [overflow-wrap:anywhere] dark:text-slate-300">
               {app.description}
             </p>

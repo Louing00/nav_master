@@ -1,9 +1,10 @@
-import { ChevronDown, ChevronRight, GripVertical, Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical, Pencil, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { createApp, deleteApp, fetchAdminApps, fetchCategories, updateApp } from '../api/admin';
+import { checkAppHealth, createApp, deleteApp, fetchAdminApps, fetchCategories, updateApp } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import AdminModal from '../components/AdminModal';
 import { confirmDelete } from '../components/ConfirmDialog';
+import HealthBadge from '../components/HealthBadge';
 import Toast, { useToast } from '../components/Toast';
 import type { NavApp } from '../types/app';
 import type { AdminCategory } from '../types/category';
@@ -18,6 +19,7 @@ const blank = {
   sortOrder: 0,
   visible: true,
   openInNewTab: true,
+  healthEnabled: true,
 };
 
 type AppGroup = {
@@ -39,6 +41,7 @@ export default function AdminApps() {
   const [draggingAppId, setDraggingAppId] = useState<number | null>(null);
   const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Set<string>>(new Set());
   const [actionError, setActionError] = useState('');
+  const [checkingAppIds, setCheckingAppIds] = useState<Set<number>>(new Set());
   const { toast, showToast, clearToast } = useToast();
 
   async function load() {
@@ -125,6 +128,7 @@ export default function AdminApps() {
       sortOrder: app.sortOrder || 0,
       visible: app.visible ?? true,
       openInNewTab: app.openInNewTab,
+      healthEnabled: app.healthEnabled ?? true,
     });
     setError('');
     setModalOpen(true);
@@ -231,6 +235,30 @@ export default function AdminApps() {
     }
   }
 
+  async function runHealthCheck(app: NavApp) {
+    if (app.healthEnabled === false || checkingAppIds.has(app.id)) {
+      return;
+    }
+
+    setActionError('');
+    setCheckingAppIds((current) => new Set(current).add(app.id));
+    try {
+      const checked = await checkAppHealth(app.id);
+      setApps((current) => current.map((item) => (item.id === app.id ? { ...item, ...checked } : item)));
+      showToast(checked.healthStatus === 'healthy' ? '健康检查正常' : '健康检查异常', checked.healthStatus === 'healthy' ? 'success' : 'error');
+    } catch (err) {
+      const message = getErrorMessage(err);
+      setActionError(message);
+      showToast(message, 'error');
+    } finally {
+      setCheckingAppIds((current) => {
+        const next = new Set(current);
+        next.delete(app.id);
+        return next;
+      });
+    }
+  }
+
   return (
     <div className="grid gap-6">
       <section className="surface overflow-hidden rounded-lg">
@@ -292,6 +320,18 @@ export default function AdminApps() {
                               </h3>
                               <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">{app.url}</p>
                             </div>
+                            <HealthBadge app={app} />
+                          </div>
+                          {app.tags.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {app.tags.slice(0, 3).map((tag) => (
+                                <span key={tag} className="rounded-full bg-ember/10 px-2.5 py-1 text-xs font-medium text-ember dark:bg-ember/20">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="mt-4 flex items-center justify-between gap-3">
                             <button
                               type="button"
                               onClick={() => toggleVisible(app)}
@@ -309,68 +349,70 @@ export default function AdminApps() {
                                 }`}
                               />
                             </button>
-                          </div>
-                          {app.tags.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {app.tags.slice(0, 3).map((tag) => (
-                                <span key={tag} className="rounded-full bg-ember/10 px-2.5 py-1 text-xs font-medium text-ember dark:bg-ember/20">
-                                  {tag}
-                                </span>
-                              ))}
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                className="focus-ring rounded-md p-2 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                onClick={() => runHealthCheck(app)}
+                                title={app.healthEnabled === false ? '已关闭健康检查' : '立即检查'}
+                                data-tooltip={app.healthEnabled === false ? '已关闭健康检查' : '立即检查'}
+                                disabled={app.healthEnabled === false || checkingAppIds.has(app.id)}
+                              >
+                                <RefreshCw size={16} className={checkingAppIds.has(app.id) ? 'animate-spin' : ''} />
+                              </button>
+                              <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(app)} title="编辑" data-tooltip="编辑">
+                                <Pencil size={16} />
+                              </button>
+                              <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(app.id)} title="删除" data-tooltip="删除">
+                                <Trash2 size={16} />
+                              </button>
                             </div>
-                          )}
-                          <div className="mt-4 flex justify-end gap-2">
-                            <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(app)} title="编辑" data-tooltip="编辑">
-                              <Pencil size={16} />
-                            </button>
-                            <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(app.id)} title="删除" data-tooltip="删除">
-                              <Trash2 size={16} />
-                            </button>
                           </div>
                         </article>
                       ))}
                     </div>
                     <div className="hidden overflow-x-auto md:block">
-                    <table className="w-full min-w-[740px] text-left text-sm">
-                      <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-                        <tr>
-                          <th className="w-12 px-4 py-3"></th>
-                          <th className="px-4 py-3">名称</th>
-                          <th className="px-4 py-3">地址</th>
-                          <th className="px-4 py-3">状态</th>
-                          <th className="px-4 py-3 text-right">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {group.apps.map((app) => (
-                          <tr
-                            key={app.id}
-                            draggable={canDragSort}
-                            onDragStart={(event) => {
-                              if (!canDragSort) {
+                      <table className="w-full min-w-[860px] text-left text-sm">
+                        <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                          <tr>
+                            <th className="w-12 px-4 py-3"></th>
+                            <th className="px-4 py-3">名称</th>
+                            <th className="px-4 py-3">地址</th>
+                            <th className="px-4 py-3">健康</th>
+                            <th className="px-4 py-3">状态</th>
+                            <th className="px-4 py-3 text-right">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.apps.map((app) => (
+                            <tr
+                              key={app.id}
+                              draggable={canDragSort}
+                              onDragStart={(event) => {
+                                if (!canDragSort) {
+                                  event.preventDefault();
+                                  return;
+                                }
+                                setDraggingAppId(app.id);
+                                event.dataTransfer.effectAllowed = 'move';
+                                event.dataTransfer.setData('text/plain', String(app.id));
+                              }}
+                              onDragOver={(event) => {
+                                if (canDragSort && draggingAppId && draggingAppId !== app.id) {
+                                  event.preventDefault();
+                                  event.dataTransfer.dropEffect = 'move';
+                                }
+                              }}
+                              onDrop={(event) => {
                                 event.preventDefault();
-                                return;
-                              }
-                              setDraggingAppId(app.id);
-                              event.dataTransfer.effectAllowed = 'move';
-                              event.dataTransfer.setData('text/plain', String(app.id));
-                            }}
-                            onDragOver={(event) => {
-                              if (canDragSort && draggingAppId && draggingAppId !== app.id) {
-                                event.preventDefault();
-                                event.dataTransfer.dropEffect = 'move';
-                              }
-                            }}
-                            onDrop={(event) => {
-                              event.preventDefault();
-                              const sourceId = Number(event.dataTransfer.getData('text/plain') || draggingAppId);
-                              reorderApp(group, sourceId, app.id);
-                            }}
-                            onDragEnd={() => setDraggingAppId(null)}
-                            className={`border-t border-black/10 transition dark:border-white/10 ${
-                              draggingAppId === app.id ? 'bg-mint/10 opacity-70' : 'bg-transparent'
-                            } ${canDragSort ? 'cursor-move hover:bg-slate-50 dark:hover:bg-slate-900/80' : ''}`}
-                          >
+                                const sourceId = Number(event.dataTransfer.getData('text/plain') || draggingAppId);
+                                reorderApp(group, sourceId, app.id);
+                              }}
+                              onDragEnd={() => setDraggingAppId(null)}
+                              className={`border-t border-black/10 transition dark:border-white/10 ${
+                                draggingAppId === app.id ? 'bg-mint/10 opacity-70' : 'bg-transparent'
+                              } ${canDragSort ? 'cursor-move hover:bg-slate-50 dark:hover:bg-slate-900/80' : ''}`}
+                            >
                             <td className="px-4 py-4">
                               <span
                                 className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 ${
@@ -384,6 +426,9 @@ export default function AdminApps() {
                             </td>
                             <td className="px-4 py-4 font-medium">{app.icon} {app.name}</td>
                             <td className="max-w-xs truncate px-4 py-4 text-slate-500">{app.url}</td>
+                            <td className="px-4 py-4">
+                              <HealthBadge app={app} />
+                            </td>
                             <td className="px-4 py-4">
                               <button
                                 type="button"
@@ -405,6 +450,16 @@ export default function AdminApps() {
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex justify-end gap-2">
+                                <button
+                                  type="button"
+                                  className="focus-ring rounded-md p-2 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                  onClick={() => runHealthCheck(app)}
+                                  title={app.healthEnabled === false ? '已关闭健康检查' : '立即检查'}
+                                  data-tooltip={app.healthEnabled === false ? '已关闭健康检查' : '立即检查'}
+                                  disabled={app.healthEnabled === false || checkingAppIds.has(app.id)}
+                                >
+                                  <RefreshCw size={16} className={checkingAppIds.has(app.id) ? 'animate-spin' : ''} />
+                                </button>
                                 <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(app)} title="编辑" data-tooltip="编辑">
                                   <Pencil size={16} />
                                 </button>
@@ -492,6 +547,10 @@ export default function AdminApps() {
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={form.openInNewTab} onChange={(event) => setForm({ ...form, openInNewTab: event.target.checked })} />
                   新窗口打开
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={form.healthEnabled} onChange={(event) => setForm({ ...form, healthEnabled: event.target.checked })} />
+                  启用健康检查
                 </label>
               </div>
               {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200 sm:col-span-2">{error}</p>}

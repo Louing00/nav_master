@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAppDto } from './dto/create-app.dto';
 import { UpdateAppDto } from './dto/update-app.dto';
+import { HealthCheckService } from './health-check.service';
 
 function parseTags(tags?: string | null): string[] {
   if (!tags) {
@@ -26,7 +27,10 @@ function serialize(app: any) {
 
 @Injectable()
 export class AppsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly healthCheckService: HealthCheckService,
+  ) {}
 
   async list(userId: number, filters: { keyword?: string; categoryId?: number; visible?: boolean }) {
     const where: Prisma.AppWhereInput = { userId };
@@ -67,17 +71,32 @@ export class AppsService {
   }
 
   async update(userId: number, id: number, dto: UpdateAppDto) {
-    await this.ensureExists(userId, id);
+    const existing = await this.ensureExists(userId, id);
     await this.ensureCategoryBelongsToUser(userId, dto.categoryId);
+    const urlChanged = dto.url !== undefined && dto.url !== existing.url;
+    const healthDisabled = dto.healthEnabled === false;
     const app = await this.prisma.app.update({
       where: { id },
       data: {
         ...dto,
         tags: dto.tags === undefined ? undefined : JSON.stringify(dto.tags),
+        healthStatus: healthDisabled || urlChanged ? 'unknown' : undefined,
+        healthCheckedAt: healthDisabled || urlChanged ? null : undefined,
+        healthLatencyMs: healthDisabled || urlChanged ? null : undefined,
+        healthError: healthDisabled || urlChanged ? null : undefined,
       },
       include: { category: true },
     });
     return serialize(app);
+  }
+
+  async checkHealth(userId: number, id: number) {
+    return serialize(await this.healthCheckService.checkApp(userId, id));
+  }
+
+  async checkAllHealth(userId: number) {
+    const apps = await this.healthCheckService.checkAll(userId);
+    return apps.map(serialize);
   }
 
   async remove(userId: number, id: number) {
@@ -91,6 +110,7 @@ export class AppsService {
     if (!exists) {
       throw new NotFoundException('应用不存在');
     }
+    return exists;
   }
 
   private async ensureCategoryBelongsToUser(userId: number, categoryId?: number | null) {

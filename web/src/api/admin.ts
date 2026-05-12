@@ -3,7 +3,7 @@ import type { NavApp } from '../types/app';
 import type { AdminCategory } from '../types/category';
 import type { SiteSettings } from '../types/setting';
 
-export type AppPayload = Omit<NavApp, 'id'>;
+export type AppPayload = Omit<NavApp, 'id' | 'healthStatus' | 'healthCheckedAt' | 'healthLatencyMs' | 'healthError'>;
 export type CategoryPayload = Omit<AdminCategory, 'id' | '_count'>;
 
 export async function fetchAdminApps() {
@@ -23,6 +23,16 @@ export async function updateApp(id: number, payload: Partial<AppPayload>) {
 
 export async function deleteApp(id: number) {
   const { data } = await client.delete(`/admin/apps/${id}`);
+  return data;
+}
+
+export async function checkAppHealth(id: number) {
+  const { data } = await client.post<NavApp>(`/admin/apps/${id}/health-check`);
+  return data;
+}
+
+export async function checkAllAppHealth() {
+  const { data } = await client.post<NavApp[]>('/admin/apps/health-check');
   return data;
 }
 

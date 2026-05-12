@@ -21,6 +21,7 @@ type ImportApp = {
   sortOrder?: number;
   visible?: boolean;
   openInNewTab?: boolean;
+  healthEnabled?: boolean;
   features?: Array<{ title?: string; description?: string | null; anchor?: string; sortOrder?: number }>;
 };
 
@@ -156,6 +157,7 @@ export class ImportExportService {
           sortOrder: app.sortOrder || 0,
           visible: app.visible ?? true,
           openInNewTab: app.openInNewTab ?? true,
+          healthEnabled: app.healthEnabled ?? true,
         },
         create: {
           name: app.name,
@@ -167,6 +169,7 @@ export class ImportExportService {
           sortOrder: app.sortOrder || 0,
           visible: app.visible ?? true,
           openInNewTab: app.openInNewTab ?? true,
+          healthEnabled: app.healthEnabled ?? true,
           userId,
         },
       });

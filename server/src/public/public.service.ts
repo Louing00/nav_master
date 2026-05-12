@@ -23,6 +23,11 @@ function serializeApp(app: any) {
     icon: app.icon,
     tags: parseTags(app.tags),
     openInNewTab: app.openInNewTab,
+    healthStatus: app.healthStatus,
+    healthCheckedAt: app.healthCheckedAt,
+    healthLatencyMs: app.healthLatencyMs,
+    healthError: app.healthError,
+    healthEnabled: app.healthEnabled,
   };
 }
 
