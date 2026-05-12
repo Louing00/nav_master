@@ -1,4 +1,4 @@
-import { LogOut, Moon, Search, Shield, Sun } from 'lucide-react';
+import { LayoutGrid, LogOut, Moon, Search, Shield, Sun } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import CategorySection from '../components/CategorySection';
@@ -8,16 +8,32 @@ import { fetchPublicApps, fetchPublicConfig } from '../api/public';
 import type { NavCategory } from '../types/app';
 import type { SiteSettings } from '../types/setting';
 
+const COLLAPSED_CATEGORIES_KEY = 'atlasgate.home.collapsedCategories';
+
+function readCollapsedCategories() {
+  try {
+    const raw = window.localStorage.getItem(COLLAPSED_CATEGORIES_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+  } catch {
+    return {};
+  }
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const [settings, setSettings] = useState<SiteSettings>({});
   const [categories, setCategories] = useState<NavCategory[]>([]);
   const [keyword, setKeyword] = useState('');
   const [dark, setDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>(readCollapsedCategories);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
   }, [dark]);
+
+  useEffect(() => {
+    window.localStorage.setItem(COLLAPSED_CATEGORIES_KEY, JSON.stringify(collapsedCategories));
+  }, [collapsedCategories]);
 
   useEffect(() => {
     Promise.all([fetchPublicConfig(), fetchPublicApps()]).then(([config, apps]) => {
@@ -42,9 +58,39 @@ export default function Home() {
       .filter((category) => category.apps.length > 0);
   }, [categories, keyword]);
 
+  const filteredCategoryIds = filtered.map((category) => String(category.id));
+  const allFilteredCollapsed = filteredCategoryIds.length > 0 && filteredCategoryIds.every((id) => collapsedCategories[id]);
+
   async function handleLogout() {
     await logout();
     navigate('/admin/login');
+  }
+
+  function toggleAllCategories() {
+    const nextCollapsed = !allFilteredCollapsed;
+    setCollapsedCategories((current) => {
+      const next = { ...current };
+      filteredCategoryIds.forEach((id) => {
+        if (nextCollapsed) {
+          next[id] = true;
+        } else {
+          delete next[id];
+        }
+      });
+      return next;
+    });
+  }
+
+  function setCategoryCollapsed(id: number, collapsed: boolean) {
+    setCollapsedCategories((current) => {
+      const next = { ...current };
+      if (collapsed) {
+        next[String(id)] = true;
+      } else {
+        delete next[String(id)];
+      }
+      return next;
+    });
   }
 
   return (
@@ -64,6 +110,19 @@ export default function Home() {
               </div>
             </div>
             <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={toggleAllCategories}
+                className={`focus-ring inline-flex h-10 w-10 items-center justify-center rounded-md transition ${
+                  allFilteredCollapsed
+                    ? 'bg-ink text-white hover:bg-mint dark:bg-white dark:text-ink'
+                    : 'border border-slate-300 text-slate-600 hover:border-mint hover:text-mint dark:border-slate-700 dark:text-slate-300'
+                }`}
+                title={allFilteredCollapsed ? '展开全部分类' : '紧凑显示全部分类'}
+                aria-pressed={allFilteredCollapsed}
+              >
+                <LayoutGrid size={18} />
+              </button>
               <Link
                 to="/admin"
                 className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 text-slate-600 hover:border-mint hover:text-mint dark:border-slate-700 dark:text-slate-300"
@@ -104,7 +163,14 @@ export default function Home() {
 
       <div className="py-4">
         {filtered.length ? (
-          filtered.map((category) => <CategorySection key={category.id} category={category} />)
+          filtered.map((category) => (
+            <CategorySection
+              key={category.id}
+              category={category}
+              collapsed={Boolean(collapsedCategories[String(category.id)])}
+              onCollapsedChange={(collapsed) => setCategoryCollapsed(category.id, collapsed)}
+            />
+          ))
         ) : (
           <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
             <EmptyState title="没有匹配的系统" description="换一个关键词，或者到后台新增入口。" />

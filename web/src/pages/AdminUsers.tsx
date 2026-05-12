@@ -4,6 +4,7 @@ import { createUser, deleteUser, fetchUsers, updateUser, type AdminUser } from '
 import { getErrorMessage } from '../api/client';
 import AdminModal from '../components/AdminModal';
 import { confirmDelete } from '../components/ConfirmDialog';
+import Toast, { useToast } from '../components/Toast';
 
 const blank = { username: '', password: '', isAdmin: false };
 
@@ -12,8 +13,8 @@ export default function AdminUsers() {
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [form, setForm] = useState(blank);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const { toast, showToast, clearToast } = useToast();
 
   async function load() {
     setUsers(await fetchUsers());
@@ -27,7 +28,6 @@ export default function AdminUsers() {
     setEditing(user);
     setForm({ username: user.username, password: '', isAdmin: user.isAdmin });
     setError('');
-    setMessage('');
     setModalOpen(true);
   }
 
@@ -35,7 +35,6 @@ export default function AdminUsers() {
     setEditing(null);
     setForm(blank);
     setError('');
-    setMessage('');
     setModalOpen(true);
   }
 
@@ -49,7 +48,6 @@ export default function AdminUsers() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
-    setMessage('');
 
     try {
       if (editing) {
@@ -57,10 +55,10 @@ export default function AdminUsers() {
           isAdmin: form.isAdmin,
           password: form.password || undefined,
         });
-        setMessage('用户已更新');
+        showToast('用户已更新');
       } else {
         await createUser(form);
-        setMessage('用户已创建');
+        showToast('用户已创建');
       }
       closeModal();
       await load();
@@ -77,8 +75,10 @@ export default function AdminUsers() {
     try {
       await deleteUser(user.id);
       await load();
+      showToast('用户已删除');
     } catch (err) {
       setError(getErrorMessage(err));
+      showToast(getErrorMessage(err), 'error');
     }
   }
 
@@ -99,9 +99,32 @@ export default function AdminUsers() {
             新增用户
           </button>
         </div>
-        {message && <p className="mx-5 mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">{message}</p>}
         {error && !modalOpen && <p className="mx-5 mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200">{error}</p>}
-        <div className="overflow-x-auto">
+        <div className="grid gap-3 p-4 md:hidden">
+          {users.map((user) => (
+            <article key={user.id} className="rounded-lg border border-black/10 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900/70">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="truncate font-semibold">{user.username}</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{user.categoryCount} 分类 / {user.appCount} 应用</p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${user.isAdmin ? 'bg-mint/10 text-mint' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'}`}>
+                  {user.isAdmin ? '管理员' : '普通用户'}
+                </span>
+              </div>
+              <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">创建于 {new Date(user.createdAt).toLocaleString()}</p>
+              <div className="mt-4 flex justify-end gap-2">
+                <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(user)} title="编辑">
+                  <Pencil size={16} />
+                </button>
+                <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(user)} title="删除">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
               <tr>
@@ -187,6 +210,7 @@ export default function AdminUsers() {
           </AdminModal>
         </form>
       )}
+      <Toast toast={toast} onClose={clearToast} />
     </div>
   );
 }

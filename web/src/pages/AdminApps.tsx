@@ -4,6 +4,7 @@ import { createApp, deleteApp, fetchAdminApps, fetchCategories, updateApp } from
 import { getErrorMessage } from '../api/client';
 import AdminModal from '../components/AdminModal';
 import { confirmDelete } from '../components/ConfirmDialog';
+import Toast, { useToast } from '../components/Toast';
 import type { NavApp } from '../types/app';
 import type { AdminCategory } from '../types/category';
 
@@ -38,6 +39,7 @@ export default function AdminApps() {
   const [draggingAppId, setDraggingAppId] = useState<number | null>(null);
   const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Set<string>>(new Set());
   const [actionError, setActionError] = useState('');
+  const { toast, showToast, clearToast } = useToast();
 
   async function load() {
     const [appRows, categoryRows] = await Promise.all([fetchAdminApps(), fetchCategories()]);
@@ -153,8 +155,10 @@ export default function AdminApps() {
     try {
       if (editing) {
         await updateApp(editing.id, payload);
+        showToast('应用已更新');
       } else {
         await createApp(payload);
+        showToast('应用已创建');
       }
       closeModal();
       await load();
@@ -169,6 +173,7 @@ export default function AdminApps() {
     }
     await deleteApp(id);
     await load();
+    showToast('应用已删除');
   }
 
   async function reorderApp(group: AppGroup, sourceAppId: number, targetAppId: number) {
@@ -203,6 +208,7 @@ export default function AdminApps() {
         ),
       );
       await load();
+      showToast('排序已更新');
     } catch (err) {
       setActionError(getErrorMessage(err));
       await load();
@@ -218,6 +224,7 @@ export default function AdminApps() {
 
     try {
       await updateApp(app.id, { visible: nextVisible });
+      showToast(nextVisible ? '应用已显示' : '应用已隐藏');
     } catch (err) {
       setActionError(getErrorMessage(err));
       await load();
@@ -273,7 +280,55 @@ export default function AdminApps() {
                 </div>
 
                 {!collapsed && (
-                  <div className="overflow-x-auto">
+                  <>
+                    <div className="grid gap-3 p-3 md:hidden">
+                      {group.apps.map((app) => (
+                        <article key={app.id} className="rounded-lg border border-black/10 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900/70">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h3 className="truncate font-semibold">
+                                {app.icon} {app.name}
+                              </h3>
+                              <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">{app.url}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => toggleVisible(app)}
+                              className={`focus-ring inline-flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition ${
+                                app.visible ?? true ? 'bg-mint' : 'bg-slate-300 dark:bg-slate-700'
+                              }`}
+                              title={app.visible ?? true ? '点击隐藏' : '点击显示'}
+                              aria-pressed={app.visible ?? true}
+                            >
+                              <span className="sr-only">{app.visible ?? true ? '显示' : '隐藏'}</span>
+                              <span
+                                className={`h-5 w-5 rounded-full bg-white shadow transition ${
+                                  app.visible ?? true ? 'translate-x-5' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                          {app.tags.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {app.tags.slice(0, 3).map((tag) => (
+                                <span key={tag} className="rounded-full bg-ember/10 px-2.5 py-1 text-xs font-medium text-ember dark:bg-ember/20">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="mt-4 flex justify-end gap-2">
+                            <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(app)} title="编辑">
+                              <Pencil size={16} />
+                            </button>
+                            <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(app.id)} title="删除">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                    <div className="hidden overflow-x-auto md:block">
                     <table className="w-full min-w-[740px] text-left text-sm">
                       <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
                         <tr>
@@ -358,7 +413,8 @@ export default function AdminApps() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                    </div>
+                  </>
                 )}
               </section>
             );
@@ -439,6 +495,7 @@ export default function AdminApps() {
           </AdminModal>
         </form>
       )}
+      <Toast toast={toast} onClose={clearToast} />
     </div>
   );
 }

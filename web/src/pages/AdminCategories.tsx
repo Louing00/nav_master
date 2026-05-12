@@ -1,8 +1,10 @@
 import { Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { createCategory, deleteCategory, fetchCategories, updateCategory } from '../api/admin';
+import { getErrorMessage } from '../api/client';
 import AdminModal from '../components/AdminModal';
 import { confirmDelete } from '../components/ConfirmDialog';
+import Toast, { useToast } from '../components/Toast';
 import type { AdminCategory } from '../types/category';
 
 const blank = { name: '', description: '', icon: '◇', sortOrder: 0, visible: true };
@@ -12,6 +14,8 @@ export default function AdminCategories() {
   const [editing, setEditing] = useState<AdminCategory | null>(null);
   const [form, setForm] = useState(blank);
   const [modalOpen, setModalOpen] = useState(false);
+  const [error, setError] = useState('');
+  const { toast, showToast, clearToast } = useToast();
 
   async function load() {
     setCategories(await fetchCategories());
@@ -23,18 +27,27 @@ export default function AdminCategories() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (editing) {
-      await updateCategory(editing.id, form);
-    } else {
-      await createCategory(form);
+    setError('');
+
+    try {
+      if (editing) {
+        await updateCategory(editing.id, form);
+        showToast('分类已更新');
+      } else {
+        await createCategory(form);
+        showToast('分类已创建');
+      }
+      closeModal();
+      await load();
+    } catch (err) {
+      setError(getErrorMessage(err));
     }
-    closeModal();
-    await load();
   }
 
   function startCreate() {
     setEditing(null);
     setForm(blank);
+    setError('');
     setModalOpen(true);
   }
 
@@ -47,12 +60,14 @@ export default function AdminCategories() {
       sortOrder: category.sortOrder,
       visible: category.visible,
     });
+    setError('');
     setModalOpen(true);
   }
 
   function closeModal() {
     setEditing(null);
     setForm(blank);
+    setError('');
     setModalOpen(false);
   }
 
@@ -60,8 +75,13 @@ export default function AdminCategories() {
     if (!confirmDelete('确认删除分类吗？分类下的应用会变为未分类。')) {
       return;
     }
-    await deleteCategory(id);
-    await load();
+    try {
+      await deleteCategory(id);
+      await load();
+      showToast('分类已删除');
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    }
   }
 
   return (
@@ -81,7 +101,36 @@ export default function AdminCategories() {
             新增分类
           </button>
         </div>
-        <div className="overflow-x-auto">
+        <div className="grid gap-3 p-4 md:hidden">
+          {categories.map((category) => (
+            <article key={category.id} className="rounded-lg border border-black/10 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900/70">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="truncate font-semibold">
+                    {category.icon} {category.name}
+                  </h3>
+                  {category.description && <p className="mt-1 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">{category.description}</p>}
+                </div>
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${category.visible ? 'bg-mint/10 text-mint' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'}`}>
+                  {category.visible ? '显示' : '隐藏'}
+                </span>
+              </div>
+              <div className="mt-4 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
+                <span>{category._count?.apps || 0} 个应用</span>
+                <span>排序 {category.sortOrder}</span>
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(category)} title="编辑">
+                  <Pencil size={16} />
+                </button>
+                <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(category.id)} title="删除">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
               <tr>
@@ -155,10 +204,12 @@ export default function AdminCategories() {
                 <input type="checkbox" checked={form.visible} onChange={(event) => setForm({ ...form, visible: event.target.checked })} />
                 前台显示
               </label>
+              {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200 sm:col-span-2">{error}</p>}
             </div>
           </AdminModal>
         </form>
       )}
+      <Toast toast={toast} onClose={clearToast} />
     </div>
   );
 }
