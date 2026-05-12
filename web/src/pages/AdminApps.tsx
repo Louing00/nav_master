@@ -1,4 +1,4 @@
-import { GripVertical, Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createApp, deleteApp, fetchAdminApps, fetchCategories, updateApp } from '../api/admin';
 import { getErrorMessage } from '../api/client';
@@ -36,7 +36,8 @@ export default function AdminApps() {
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [draggingAppId, setDraggingAppId] = useState<number | null>(null);
-  const [sortError, setSortError] = useState('');
+  const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Set<string>>(new Set());
+  const [actionError, setActionError] = useState('');
 
   async function load() {
     const [appRows, categoryRows] = await Promise.all([fetchAdminApps(), fetchCategories()]);
@@ -81,6 +82,28 @@ export default function AdminApps() {
 
   const canDragSort = keyword.trim().length === 0;
 
+  function groupKey(group: AppGroup) {
+    return group.id === null ? 'uncategorized' : String(group.id);
+  }
+
+  function toggleGroup(group: AppGroup) {
+    const key = groupKey(group);
+    setCollapsedGroupKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  function nextSortOrder(categoryId?: number) {
+    const groupApps = apps.filter((app) => (categoryId ? app.categoryId === categoryId : !app.categoryId));
+    return groupApps.reduce((max, app) => Math.max(max, app.sortOrder || 0), 0) + 10;
+  }
+
   function startCreate() {
     setEditing(null);
     setForm(blank);
@@ -115,14 +138,16 @@ export default function AdminApps() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
+    const categoryId = form.categoryId ? Number(form.categoryId) : undefined;
+    const categoryChanged = editing ? (editing.categoryId || undefined) !== categoryId : false;
     const payload = {
       ...form,
-      categoryId: form.categoryId ? Number(form.categoryId) : undefined,
+      categoryId,
       tags: form.tags
         .split(',')
         .map((tag) => tag.trim())
         .filter(Boolean),
-      sortOrder: Number(form.sortOrder || 0),
+      sortOrder: editing && !categoryChanged ? Number(form.sortOrder || 0) : nextSortOrder(categoryId),
     };
 
     try {
@@ -166,7 +191,7 @@ export default function AdminApps() {
       return groupAppIndex >= 0 ? { ...app, sortOrder: (groupAppIndex + 1) * 10 } : app;
     });
 
-    setSortError('');
+    setActionError('');
     setApps(nextApps);
 
     try {
@@ -179,10 +204,23 @@ export default function AdminApps() {
       );
       await load();
     } catch (err) {
-      setSortError(getErrorMessage(err));
+      setActionError(getErrorMessage(err));
       await load();
     } finally {
       setDraggingAppId(null);
+    }
+  }
+
+  async function toggleVisible(app: NavApp) {
+    const nextVisible = !(app.visible ?? true);
+    setActionError('');
+    setApps((current) => current.map((item) => (item.id === app.id ? { ...item, visible: nextVisible } : item)));
+
+    try {
+      await updateApp(app.id, { visible: nextVisible });
+    } catch (err) {
+      setActionError(getErrorMessage(err));
+      await load();
     }
   }
 
@@ -206,94 +244,125 @@ export default function AdminApps() {
             </button>
           </div>
         </div>
-        {sortError && <p className="mx-5 mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200">{sortError}</p>}
+        {actionError && <p className="mx-5 mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200">{actionError}</p>}
         {!canDragSort && <p className="mx-5 mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">清空搜索后可拖拽排序。</p>}
         <div className="grid gap-5 p-5">
-          {groupedApps.map((group) => (
-            <section key={group.id ?? 'uncategorized'} className="overflow-hidden rounded-lg border border-black/10 bg-white/70 dark:border-white/10 dark:bg-slate-950/40">
-              <div className="flex items-center justify-between gap-4 border-b border-black/10 px-4 py-3 dark:border-white/10">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg text-mint">{group.icon || '·'}</span>
-                    <h2 className="font-semibold">{group.name}</h2>
-                  </div>
-                  {group.description && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{group.description}</p>}
-                </div>
-                <span className="text-xs text-slate-500 dark:text-slate-400">{group.apps.length} 个应用</span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[820px] text-left text-sm">
-                  <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-                    <tr>
-                      <th className="w-12 px-4 py-3"></th>
-                      <th className="px-4 py-3">名称</th>
-                      <th className="px-4 py-3">地址</th>
-                      <th className="px-4 py-3">状态</th>
-                      <th className="px-4 py-3">排序</th>
-                      <th className="px-4 py-3 text-right">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.apps.map((app) => (
-                      <tr
-                        key={app.id}
-                        draggable={canDragSort}
-                        onDragStart={(event) => {
-                          if (!canDragSort) {
-                            event.preventDefault();
-                            return;
-                          }
-                          setDraggingAppId(app.id);
-                          event.dataTransfer.effectAllowed = 'move';
-                          event.dataTransfer.setData('text/plain', String(app.id));
-                        }}
-                        onDragOver={(event) => {
-                          if (canDragSort && draggingAppId && draggingAppId !== app.id) {
-                            event.preventDefault();
-                            event.dataTransfer.dropEffect = 'move';
-                          }
-                        }}
-                        onDrop={(event) => {
-                          event.preventDefault();
-                          const sourceId = Number(event.dataTransfer.getData('text/plain') || draggingAppId);
-                          reorderApp(group, sourceId, app.id);
-                        }}
-                        onDragEnd={() => setDraggingAppId(null)}
-                        className={`border-t border-black/10 transition dark:border-white/10 ${
-                          draggingAppId === app.id ? 'bg-mint/10 opacity-70' : 'bg-transparent'
-                        } ${canDragSort ? 'cursor-move hover:bg-slate-50 dark:hover:bg-slate-900/80' : ''}`}
+          {groupedApps.map((group) => {
+            const collapsed = collapsedGroupKeys.has(groupKey(group));
+
+            return (
+              <section key={group.id ?? 'uncategorized'} className="overflow-hidden rounded-lg border border-black/10 bg-white/70 dark:border-white/10 dark:bg-slate-950/40">
+                <div className="flex items-center justify-between gap-4 border-b border-black/10 px-4 py-3 dark:border-white/10">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg text-mint">{group.icon || '·'}</span>
+                      <h2 className="font-semibold">{group.name}</h2>
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(group)}
+                        className="focus-ring inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-mint dark:text-slate-400 dark:hover:bg-slate-900"
+                        title={collapsed ? '展开分类' : '折叠分类'}
+                        aria-expanded={!collapsed}
                       >
-                        <td className="px-4 py-4">
-                          <span
-                            className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 ${
-                              canDragSort ? 'cursor-grab hover:bg-slate-100 hover:text-mint active:cursor-grabbing dark:hover:bg-slate-800' : 'opacity-40'
-                            }`}
-                            title={canDragSort ? '拖拽排序' : '清空搜索后可排序'}
+                        {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                      </button>
+                    </div>
+                    {group.description && !collapsed && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{group.description}</p>}
+                  </div>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{group.apps.length} 个应用</span>
+                </div>
+
+                {!collapsed && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[740px] text-left text-sm">
+                      <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                        <tr>
+                          <th className="w-12 px-4 py-3"></th>
+                          <th className="px-4 py-3">名称</th>
+                          <th className="px-4 py-3">地址</th>
+                          <th className="px-4 py-3">状态</th>
+                          <th className="px-4 py-3 text-right">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.apps.map((app) => (
+                          <tr
+                            key={app.id}
+                            draggable={canDragSort}
+                            onDragStart={(event) => {
+                              if (!canDragSort) {
+                                event.preventDefault();
+                                return;
+                              }
+                              setDraggingAppId(app.id);
+                              event.dataTransfer.effectAllowed = 'move';
+                              event.dataTransfer.setData('text/plain', String(app.id));
+                            }}
+                            onDragOver={(event) => {
+                              if (canDragSort && draggingAppId && draggingAppId !== app.id) {
+                                event.preventDefault();
+                                event.dataTransfer.dropEffect = 'move';
+                              }
+                            }}
+                            onDrop={(event) => {
+                              event.preventDefault();
+                              const sourceId = Number(event.dataTransfer.getData('text/plain') || draggingAppId);
+                              reorderApp(group, sourceId, app.id);
+                            }}
+                            onDragEnd={() => setDraggingAppId(null)}
+                            className={`border-t border-black/10 transition dark:border-white/10 ${
+                              draggingAppId === app.id ? 'bg-mint/10 opacity-70' : 'bg-transparent'
+                            } ${canDragSort ? 'cursor-move hover:bg-slate-50 dark:hover:bg-slate-900/80' : ''}`}
                           >
-                            <GripVertical size={17} />
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 font-medium">{app.icon} {app.name}</td>
-                        <td className="max-w-xs truncate px-4 py-4 text-slate-500">{app.url}</td>
-                        <td className="px-4 py-4">{app.visible ? '显示' : '隐藏'}</td>
-                        <td className="px-4 py-4">{app.sortOrder}</td>
-                        <td className="px-4 py-4">
-                          <div className="flex justify-end gap-2">
-                            <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(app)} title="编辑">
-                              <Pencil size={16} />
-                            </button>
-                            <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(app.id)} title="删除">
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          ))}
+                            <td className="px-4 py-4">
+                              <span
+                                className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 ${
+                                  canDragSort ? 'cursor-grab hover:bg-slate-100 hover:text-mint active:cursor-grabbing dark:hover:bg-slate-800' : 'opacity-40'
+                                }`}
+                                title={canDragSort ? '拖拽排序' : '清空搜索后可排序'}
+                              >
+                                <GripVertical size={17} />
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 font-medium">{app.icon} {app.name}</td>
+                            <td className="max-w-xs truncate px-4 py-4 text-slate-500">{app.url}</td>
+                            <td className="px-4 py-4">
+                              <button
+                                type="button"
+                                onClick={() => toggleVisible(app)}
+                                className={`focus-ring inline-flex h-6 w-11 items-center rounded-full p-0.5 transition ${
+                                  app.visible ?? true ? 'bg-mint' : 'bg-slate-300 dark:bg-slate-700'
+                                }`}
+                                title={app.visible ?? true ? '点击隐藏' : '点击显示'}
+                                aria-pressed={app.visible ?? true}
+                              >
+                                <span className="sr-only">{app.visible ?? true ? '显示' : '隐藏'}</span>
+                                <span
+                                  className={`h-5 w-5 rounded-full bg-white shadow transition ${
+                                    app.visible ?? true ? 'translate-x-5' : 'translate-x-0'
+                                  }`}
+                                />
+                              </button>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex justify-end gap-2">
+                                <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(app)} title="编辑">
+                                  <Pencil size={16} />
+                                </button>
+                                <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(app.id)} title="删除">
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            );
+          })}
           {groupedApps.length === 0 && (
             <div className="rounded-lg border border-dashed border-black/15 px-6 py-10 text-center text-sm text-slate-500 dark:border-white/15 dark:text-slate-400">
               暂无应用
@@ -335,10 +404,6 @@ export default function AdminApps() {
               <label>
                 <span className="admin-label">图标</span>
                 <input className="admin-input mt-1" value={form.icon} onChange={(event) => setForm({ ...form, icon: event.target.value })} />
-              </label>
-              <label>
-                <span className="admin-label">排序</span>
-                <input className="admin-input mt-1" type="number" value={form.sortOrder} onChange={(event) => setForm({ ...form, sortOrder: Number(event.target.value) })} />
               </label>
               <label>
                 <span className="admin-label">分类</span>
