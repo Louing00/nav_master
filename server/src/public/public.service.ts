@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { HealthCheckService } from '../apps/health-check.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 function parseTags(tags?: string | null): string[] {
@@ -33,7 +34,10 @@ function serializeApp(app: any) {
 
 @Injectable()
 export class PublicService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly healthCheckService: HealthCheckService,
+  ) {}
 
   async config(userId: number) {
     await this.prisma.ensureUserWorkspace(userId);
@@ -83,5 +87,11 @@ export class PublicService {
     }
 
     return grouped;
+  }
+
+  async checkAppsHealth(userId: number) {
+    await this.prisma.ensureUserWorkspace(userId);
+    const apps = await this.healthCheckService.checkAll(userId);
+    return apps.map(serializeApp);
   }
 }

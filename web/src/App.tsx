@@ -9,23 +9,27 @@ import AdminSettings from './pages/AdminSettings';
 import ImportExport from './pages/ImportExport';
 import AdminSecurity from './pages/AdminSecurity';
 import AdminUsers from './pages/AdminUsers';
+import FloatingTooltip from './components/FloatingTooltip';
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/admin/login" element={<Login />} />
-      <Route path="/admin/register" element={<Register />} />
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<Navigate to="/admin/apps" replace />} />
-        <Route path="apps" element={<AdminApps />} />
-        <Route path="categories" element={<AdminCategories />} />
-        <Route path="settings" element={<AdminSettings />} />
-        <Route path="import-export" element={<ImportExport />} />
-        <Route path="security" element={<AdminSecurity />} />
-        <Route path="users" element={<AdminUsers />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/admin/login" element={<Login />} />
+        <Route path="/admin/register" element={<Register />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to="/admin/apps" replace />} />
+          <Route path="apps" element={<AdminApps />} />
+          <Route path="categories" element={<AdminCategories />} />
+          <Route path="settings" element={<AdminSettings />} />
+          <Route path="import-export" element={<ImportExport />} />
+          <Route path="security" element={<AdminSecurity />} />
+          <Route path="users" element={<AdminUsers />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <FloatingTooltip />
+    </>
   );
 }

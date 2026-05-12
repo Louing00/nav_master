@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronRight, GripVertical, Pencil, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { checkAppHealth, createApp, deleteApp, fetchAdminApps, fetchCategories, updateApp } from '../api/admin';
+import { checkAllAppHealth, checkAppHealth, createApp, deleteApp, fetchAdminApps, fetchCategories, updateApp } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import AdminModal from '../components/AdminModal';
 import { confirmDelete } from '../components/ConfirmDialog';
@@ -30,6 +30,21 @@ type AppGroup = {
   apps: NavApp[];
 };
 
+function mergeCheckedApps(apps: NavApp[], checkedApps: NavApp[]) {
+  const appMap = new Map(checkedApps.map((app) => [app.id, app]));
+  return apps.map((app) => (appMap.has(app.id) ? { ...app, ...appMap.get(app.id)! } : app));
+}
+
+function formatHealthSummary(checkedApps: NavApp[]) {
+  if (checkedApps.length === 0) {
+    return '没有启用健康检查的应用';
+  }
+
+  const healthy = checkedApps.filter((app) => app.healthStatus === 'healthy').length;
+  const unhealthy = checkedApps.filter((app) => app.healthStatus === 'unhealthy').length;
+  return `检查完成：正常 ${healthy} 个，异常 ${unhealthy} 个`;
+}
+
 export default function AdminApps() {
   const [apps, setApps] = useState<NavApp[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
@@ -42,6 +57,7 @@ export default function AdminApps() {
   const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Set<string>>(new Set());
   const [actionError, setActionError] = useState('');
   const [checkingAppIds, setCheckingAppIds] = useState<Set<number>>(new Set());
+  const [checkingAllHealth, setCheckingAllHealth] = useState(false);
   const { toast, showToast, clearToast } = useToast();
 
   async function load() {
@@ -236,7 +252,7 @@ export default function AdminApps() {
   }
 
   async function runHealthCheck(app: NavApp) {
-    if (app.healthEnabled === false || checkingAppIds.has(app.id)) {
+    if (app.healthEnabled === false || checkingAllHealth || checkingAppIds.has(app.id)) {
       return;
     }
 
@@ -259,6 +275,31 @@ export default function AdminApps() {
     }
   }
 
+  async function runAllHealthChecks() {
+    if (checkingAllHealth || checkingAppIds.size > 0) {
+      return;
+    }
+
+    const enabledAppIds = apps.filter((app) => app.healthEnabled !== false).map((app) => app.id);
+    setActionError('');
+    setCheckingAllHealth(true);
+    setCheckingAppIds(new Set(enabledAppIds));
+
+    try {
+      const checkedApps = await checkAllAppHealth();
+      setApps((current) => mergeCheckedApps(current, checkedApps));
+      const hasUnhealthy = checkedApps.some((app) => app.healthStatus === 'unhealthy');
+      showToast(formatHealthSummary(checkedApps), hasUnhealthy ? 'error' : 'success');
+    } catch (err) {
+      const message = getErrorMessage(err);
+      setActionError(message);
+      showToast(message, 'error');
+    } finally {
+      setCheckingAllHealth(false);
+      setCheckingAppIds(new Set());
+    }
+  }
+
   return (
     <div className="grid gap-6">
       <section className="surface overflow-hidden rounded-lg">
@@ -269,6 +310,17 @@ export default function AdminApps() {
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <input className="admin-input sm:w-64" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="搜索应用" />
+            <button
+              type="button"
+              onClick={runAllHealthChecks}
+              className="focus-ring inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-700 dark:text-slate-300"
+              title={checkingAllHealth ? '正在批量检查' : '批量检查'}
+              data-tooltip={checkingAllHealth ? '正在批量检查' : '批量检查'}
+              disabled={checkingAllHealth || checkingAppIds.size > 0}
+            >
+              <RefreshCw size={16} className={checkingAllHealth ? 'animate-spin' : ''} />
+              批量检查
+            </button>
             <button
               type="button"
               onClick={startCreate}
@@ -356,7 +408,7 @@ export default function AdminApps() {
                                 onClick={() => runHealthCheck(app)}
                                 title={app.healthEnabled === false ? '已关闭健康检查' : '立即检查'}
                                 data-tooltip={app.healthEnabled === false ? '已关闭健康检查' : '立即检查'}
-                                disabled={app.healthEnabled === false || checkingAppIds.has(app.id)}
+                                disabled={app.healthEnabled === false || checkingAllHealth || checkingAppIds.has(app.id)}
                               >
                                 <RefreshCw size={16} className={checkingAppIds.has(app.id) ? 'animate-spin' : ''} />
                               </button>
@@ -456,7 +508,7 @@ export default function AdminApps() {
                                   onClick={() => runHealthCheck(app)}
                                   title={app.healthEnabled === false ? '已关闭健康检查' : '立即检查'}
                                   data-tooltip={app.healthEnabled === false ? '已关闭健康检查' : '立即检查'}
-                                  disabled={app.healthEnabled === false || checkingAppIds.has(app.id)}
+                                  disabled={app.healthEnabled === false || checkingAllHealth || checkingAppIds.has(app.id)}
                                 >
                                   <RefreshCw size={16} className={checkingAppIds.has(app.id) ? 'animate-spin' : ''} />
                                 </button>

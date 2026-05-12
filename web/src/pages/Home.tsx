@@ -1,11 +1,13 @@
-import { LayoutGrid, LogOut, Moon, Search, Shield, Sun } from 'lucide-react';
+import { LayoutGrid, LogOut, Moon, RefreshCw, Search, Shield, Sun } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import CategorySection from '../components/CategorySection';
 import EmptyState from '../components/EmptyState';
 import { logout } from '../api/auth';
-import { fetchPublicApps, fetchPublicConfig } from '../api/public';
-import type { NavCategory } from '../types/app';
+import { getErrorMessage } from '../api/client';
+import { checkPublicAppsHealth, fetchPublicApps, fetchPublicConfig } from '../api/public';
+import Toast, { useToast } from '../components/Toast';
+import type { NavApp, NavCategory } from '../types/app';
 import type { SiteSettings } from '../types/setting';
 
 const COLLAPSED_CATEGORIES_KEY = 'atlasgate.home.collapsedCategories';
@@ -19,6 +21,24 @@ function readCollapsedCategories() {
   }
 }
 
+function mergeCheckedApps(categories: NavCategory[], checkedApps: NavApp[]) {
+  const appMap = new Map(checkedApps.map((app) => [app.id, app]));
+  return categories.map((category) => ({
+    ...category,
+    apps: category.apps.map((app) => (appMap.has(app.id) ? { ...app, ...appMap.get(app.id)! } : app)),
+  }));
+}
+
+function formatHealthSummary(checkedApps: NavApp[]) {
+  if (checkedApps.length === 0) {
+    return '没有启用健康检查的应用';
+  }
+
+  const healthy = checkedApps.filter((app) => app.healthStatus === 'healthy').length;
+  const unhealthy = checkedApps.filter((app) => app.healthStatus === 'unhealthy').length;
+  return `检查完成：正常 ${healthy} 个，异常 ${unhealthy} 个`;
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const [settings, setSettings] = useState<SiteSettings>({});
@@ -26,6 +46,8 @@ export default function Home() {
   const [keyword, setKeyword] = useState('');
   const [dark, setDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>(readCollapsedCategories);
+  const [checkingAllHealth, setCheckingAllHealth] = useState(false);
+  const { toast, showToast, clearToast } = useToast();
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
@@ -60,6 +82,7 @@ export default function Home() {
 
   const filteredCategoryIds = filtered.map((category) => String(category.id));
   const allFilteredCollapsed = filteredCategoryIds.length > 0 && filteredCategoryIds.every((id) => collapsedCategories[id]);
+  const visibleAppCount = categories.reduce((count, category) => count + category.apps.length, 0);
 
   async function handleLogout() {
     await logout();
@@ -93,6 +116,24 @@ export default function Home() {
     });
   }
 
+  async function runAllHealthChecks() {
+    if (checkingAllHealth) {
+      return;
+    }
+
+    setCheckingAllHealth(true);
+    try {
+      const checkedApps = await checkPublicAppsHealth();
+      setCategories((current) => mergeCheckedApps(current, checkedApps));
+      const hasUnhealthy = checkedApps.some((app) => app.healthStatus === 'unhealthy');
+      showToast(formatHealthSummary(checkedApps), hasUnhealthy ? 'error' : 'success');
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    } finally {
+      setCheckingAllHealth(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#f6f3ec] text-ink dark:bg-slate-950 dark:text-slate-100">
       <header className="border-b border-black/10 bg-[#f6f3ec]/88 backdrop-blur dark:border-white/10 dark:bg-slate-950/90">
@@ -110,6 +151,16 @@ export default function Home() {
               </div>
             </div>
             <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={runAllHealthChecks}
+                className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 text-slate-600 transition hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-700 dark:text-slate-300"
+                title={checkingAllHealth ? '正在批量检查' : '批量检查'}
+                data-tooltip={checkingAllHealth ? '正在批量检查' : '批量检查'}
+                disabled={checkingAllHealth || visibleAppCount === 0}
+              >
+                <RefreshCw size={18} className={checkingAllHealth ? 'animate-spin' : ''} />
+              </button>
               <button
                 type="button"
                 onClick={toggleAllCategories}
@@ -185,6 +236,7 @@ export default function Home() {
       <footer className="mx-auto max-w-7xl px-4 py-8 text-sm text-slate-500 sm:px-6 lg:px-8 dark:text-slate-400">
         {settings.footer_text || 'Powered by AtlasGate'}
       </footer>
+      <Toast toast={toast} onClose={clearToast} />
     </main>
   );
 }
