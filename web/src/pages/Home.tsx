@@ -1,13 +1,15 @@
-import { Moon, Search, Shield, Sun } from 'lucide-react';
+import { LogOut, Moon, Search, Shield, Sun } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import CategorySection from '../components/CategorySection';
 import EmptyState from '../components/EmptyState';
+import { logout } from '../api/auth';
 import { fetchPublicApps, fetchPublicConfig } from '../api/public';
 import type { NavCategory } from '../types/app';
 import type { SiteSettings } from '../types/setting';
 
 export default function Home() {
+  const navigate = useNavigate();
   const [settings, setSettings] = useState<SiteSettings>({});
   const [categories, setCategories] = useState<NavCategory[]>([]);
   const [keyword, setKeyword] = useState('');
@@ -40,6 +42,11 @@ export default function Home() {
       .filter((category) => category.apps.length > 0);
   }, [categories, keyword]);
 
+  async function handleLogout() {
+    await logout();
+    navigate('/admin/login');
+  }
+
   return (
     <main className="min-h-screen bg-[#f6f3ec] text-ink dark:bg-slate-950 dark:text-slate-100">
       <header className="border-b border-black/10 bg-[#f6f3ec]/88 backdrop-blur dark:border-white/10 dark:bg-slate-950/90">
@@ -71,6 +78,14 @@ export default function Home() {
                 title="切换主题"
               >
                 {dark ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 text-slate-600 hover:border-red-300 hover:text-red-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-red-400 dark:hover:text-red-300"
+                title="退出登录"
+              >
+                <LogOut size={18} />
               </button>
             </div>
           </div>
