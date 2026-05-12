@@ -1,11 +1,11 @@
-import { LayoutGrid, LogOut, Moon, RefreshCw, Search, Shield, Sun } from 'lucide-react';
+import { LayoutGrid, LogOut, Moon, Search, Shield, Sun } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import CategorySection from '../components/CategorySection';
 import EmptyState from '../components/EmptyState';
 import { logout } from '../api/auth';
 import { getErrorMessage } from '../api/client';
-import { checkPublicAppsHealth, fetchPublicApps, fetchPublicConfig } from '../api/public';
+import { checkPublicCategoryHealth, fetchPublicApps, fetchPublicConfig } from '../api/public';
 import Toast, { useToast } from '../components/Toast';
 import type { NavApp, NavCategory } from '../types/app';
 import type { SiteSettings } from '../types/setting';
@@ -29,14 +29,14 @@ function mergeCheckedApps(categories: NavCategory[], checkedApps: NavApp[]) {
   }));
 }
 
-function formatHealthSummary(checkedApps: NavApp[]) {
+function formatHealthSummary(categoryName: string, checkedApps: NavApp[]) {
   if (checkedApps.length === 0) {
-    return '没有启用健康检查的应用';
+    return `${categoryName} 没有启用健康检查的应用`;
   }
 
   const healthy = checkedApps.filter((app) => app.healthStatus === 'healthy').length;
   const unhealthy = checkedApps.filter((app) => app.healthStatus === 'unhealthy').length;
-  return `检查完成：正常 ${healthy} 个，异常 ${unhealthy} 个`;
+  return `${categoryName} 检查完成：正常 ${healthy} 个，异常 ${unhealthy} 个`;
 }
 
 export default function Home() {
@@ -46,7 +46,7 @@ export default function Home() {
   const [keyword, setKeyword] = useState('');
   const [dark, setDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>(readCollapsedCategories);
-  const [checkingAllHealth, setCheckingAllHealth] = useState(false);
+  const [checkingCategoryIds, setCheckingCategoryIds] = useState<Set<number>>(new Set());
   const { toast, showToast, clearToast } = useToast();
 
   useEffect(() => {
@@ -82,7 +82,6 @@ export default function Home() {
 
   const filteredCategoryIds = filtered.map((category) => String(category.id));
   const allFilteredCollapsed = filteredCategoryIds.length > 0 && filteredCategoryIds.every((id) => collapsedCategories[id]);
-  const visibleAppCount = categories.reduce((count, category) => count + category.apps.length, 0);
 
   async function handleLogout() {
     await logout();
@@ -116,21 +115,25 @@ export default function Home() {
     });
   }
 
-  async function runAllHealthChecks() {
-    if (checkingAllHealth) {
+  async function runCategoryHealthCheck(category: NavCategory) {
+    if (checkingCategoryIds.has(category.id)) {
       return;
     }
 
-    setCheckingAllHealth(true);
+    setCheckingCategoryIds((current) => new Set(current).add(category.id));
     try {
-      const checkedApps = await checkPublicAppsHealth();
+      const checkedApps = await checkPublicCategoryHealth(category.id);
       setCategories((current) => mergeCheckedApps(current, checkedApps));
       const hasUnhealthy = checkedApps.some((app) => app.healthStatus === 'unhealthy');
-      showToast(formatHealthSummary(checkedApps), hasUnhealthy ? 'error' : 'success');
+      showToast(formatHealthSummary(category.name, checkedApps), hasUnhealthy ? 'error' : 'success');
     } catch (err) {
       showToast(getErrorMessage(err), 'error');
     } finally {
-      setCheckingAllHealth(false);
+      setCheckingCategoryIds((current) => {
+        const next = new Set(current);
+        next.delete(category.id);
+        return next;
+      });
     }
   }
 
@@ -151,16 +154,6 @@ export default function Home() {
               </div>
             </div>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={runAllHealthChecks}
-                className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 text-slate-600 transition hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-700 dark:text-slate-300"
-                title={checkingAllHealth ? '正在批量检查' : '批量检查'}
-                data-tooltip={checkingAllHealth ? '正在批量检查' : '批量检查'}
-                disabled={checkingAllHealth || visibleAppCount === 0}
-              >
-                <RefreshCw size={18} className={checkingAllHealth ? 'animate-spin' : ''} />
-              </button>
               <button
                 type="button"
                 onClick={toggleAllCategories}
@@ -223,7 +216,9 @@ export default function Home() {
               key={category.id}
               category={category}
               collapsed={Boolean(collapsedCategories[String(category.id)])}
+              checkingHealth={checkingCategoryIds.has(category.id)}
               onCollapsedChange={(collapsed) => setCategoryCollapsed(category.id, collapsed)}
+              onHealthCheck={() => runCategoryHealthCheck(category)}
             />
           ))
         ) : (

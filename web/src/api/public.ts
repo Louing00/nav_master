@@ -12,7 +12,7 @@ export async function fetchPublicApps() {
   return data;
 }
 
-export async function checkPublicAppsHealth() {
-  const { data } = await client.post<NavApp[]>('/public/apps/health-check');
+export async function checkPublicCategoryHealth(categoryId: number) {
+  const { data } = await client.post<NavApp[]>(`/public/categories/${categoryId}/health-check`);
   return data;
 }

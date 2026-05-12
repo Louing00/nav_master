@@ -1,14 +1,16 @@
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import AppCard from './AppCard';
 import type { NavCategory } from '../types/app';
 
 type Props = {
   category: NavCategory;
   collapsed: boolean;
+  checkingHealth?: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
+  onHealthCheck: () => void;
 };
 
-export default function CategorySection({ category, collapsed, onCollapsedChange }: Props) {
+export default function CategorySection({ category, collapsed, checkingHealth = false, onCollapsedChange, onHealthCheck }: Props) {
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -16,6 +18,16 @@ export default function CategorySection({ category, collapsed, onCollapsedChange
           <div className="flex min-w-0 items-center gap-3">
             <span className="text-2xl text-mint">{category.icon || '·'}</span>
             <h2 className="min-w-0 truncate text-xl font-semibold text-ink dark:text-white">{category.name}</h2>
+            <button
+              type="button"
+              onClick={onHealthCheck}
+              className="focus-ring inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/70 hover:text-mint disabled:cursor-not-allowed disabled:opacity-45 dark:text-slate-400 dark:hover:bg-slate-900"
+              title={checkingHealth ? '正在检查本分类' : '检查本分类'}
+              data-tooltip={checkingHealth ? '正在检查本分类' : '检查本分类'}
+              disabled={checkingHealth || category.apps.length === 0}
+            >
+              <RefreshCw size={16} className={checkingHealth ? 'animate-spin' : ''} />
+            </button>
             <button
               type="button"
               onClick={() => onCollapsedChange(!collapsed)}

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { PublicService } from './public.service';
@@ -20,8 +20,8 @@ export class PublicController {
     return this.publicService.apps(request.user.id);
   }
 
-  @Post('apps/health-check')
-  checkAppsHealth(@Req() request: AuthRequest) {
-    return this.publicService.checkAppsHealth(request.user.id);
+  @Post('categories/:id/health-check')
+  checkCategoryHealth(@Req() request: AuthRequest, @Param('id', ParseIntPipe) id: number) {
+    return this.publicService.checkCategoryHealth(request.user.id, id);
   }
 }

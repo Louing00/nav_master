@@ -89,9 +89,34 @@ export class PublicService {
     return grouped;
   }
 
-  async checkAppsHealth(userId: number) {
+  async checkCategoryHealth(userId: number, categoryId: number) {
     await this.prisma.ensureUserWorkspace(userId);
-    const apps = await this.healthCheckService.checkAll(userId);
-    return apps.map(serializeApp);
+    if (categoryId !== 0) {
+      const category = await this.prisma.category.findFirst({
+        where: { id: categoryId, userId, visible: true },
+        select: { id: true },
+      });
+      if (!category) {
+        return [];
+      }
+    }
+
+    const apps = await this.prisma.app.findMany({
+      where: {
+        userId,
+        visible: true,
+        healthEnabled: true,
+        categoryId: categoryId === 0 ? null : categoryId,
+      },
+      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+      select: { id: true },
+    });
+
+    const checked = [];
+    for (const app of apps) {
+      checked.push(await this.healthCheckService.checkApp(userId, app.id));
+    }
+
+    return checked.map(serializeApp);
   }
 }
