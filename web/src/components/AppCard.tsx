@@ -13,22 +13,11 @@ export default function AppCard({ app, compact = false }: Props) {
         href={app.url}
         target={app.openInNewTab ? '_blank' : '_self'}
         rel="noreferrer"
-        className="surface focus-ring group flex min-h-24 flex-col justify-between overflow-hidden rounded-lg px-4 py-3 transition hover:-translate-y-0.5 hover:border-mint/40 hover:shadow-md"
+        className="surface focus-ring group flex min-h-20 items-center gap-3 overflow-hidden rounded-lg px-4 py-3 transition hover:-translate-y-0.5 hover:border-mint/40 hover:shadow-md"
         title="打开系统"
       >
-        <h3 className="truncate text-base font-semibold text-ink dark:text-white">{app.name}</h3>
-        {app.tags.length > 0 && (
-          <div className="mt-3 flex min-w-0 flex-wrap gap-2">
-            {app.tags.slice(0, 3).map((tag) => (
-              <span
-                key={tag}
-                className="max-w-full truncate rounded-full bg-ember/10 px-2.5 py-1 text-xs font-medium text-ember dark:bg-ember/20"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center text-2xl text-mint">{app.icon || '⌁'}</span>
+        <h3 className="min-w-0 truncate text-base font-semibold text-ink dark:text-white">{app.name}</h3>
       </a>
     );
   }
