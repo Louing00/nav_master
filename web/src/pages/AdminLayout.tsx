@@ -50,6 +50,7 @@ export default function AdminLayout() {
               onClick={() => setMobileMenuOpen((value) => !value)}
               className="focus-ring inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:border-mint hover:text-mint dark:border-slate-700 dark:text-slate-300 lg:hidden"
               title={mobileMenuOpen ? '收起菜单' : '展开菜单'}
+              data-tooltip={mobileMenuOpen ? '收起菜单' : '展开菜单'}
               aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}

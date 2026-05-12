@@ -21,6 +21,7 @@ export default function CategorySection({ category, collapsed, onCollapsedChange
               onClick={() => onCollapsedChange(!collapsed)}
               className="focus-ring inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/70 hover:text-mint dark:text-slate-400 dark:hover:bg-slate-900"
               title={collapsed ? '展开分类' : '折叠分类'}
+              data-tooltip={collapsed ? '展开分类' : '折叠分类'}
               aria-expanded={!collapsed}
             >
               {collapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}

@@ -61,6 +61,7 @@ export default function AppCard({ app, compact = false }: Props) {
             rel="noreferrer"
             className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-white transition hover:bg-mint dark:bg-white dark:text-ink"
             title="打开系统"
+            data-tooltip="打开系统"
           >
             <ExternalLink size={18} />
           </a>

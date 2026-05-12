@@ -20,6 +20,7 @@ export default function AdminModal({ title, children, footer, onClose, maxWidth 
             onClick={onClose}
             className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-ink dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
             title="关闭"
+            data-tooltip="关闭"
           >
             <X size={18} />
           </button>

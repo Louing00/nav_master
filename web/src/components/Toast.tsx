@@ -61,7 +61,7 @@ export default function Toast({ toast, onClose }: ToastProps) {
       <div className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg ${styles[toast.kind]}`}>
         <Icon size={18} className="shrink-0" />
         <span>{toast.message}</span>
-        <button type="button" onClick={onClose} className="focus-ring -mr-1 inline-flex h-7 w-7 items-center justify-center rounded-md" title="关闭提示">
+        <button type="button" onClick={onClose} className="focus-ring -mr-1 inline-flex h-7 w-7 items-center justify-center rounded-md" title="关闭提示" data-tooltip="关闭提示">
           <X size={15} />
         </button>
       </div>

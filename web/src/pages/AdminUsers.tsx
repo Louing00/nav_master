@@ -114,10 +114,10 @@ export default function AdminUsers() {
               </div>
               <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">创建于 {new Date(user.createdAt).toLocaleString()}</p>
               <div className="mt-4 flex justify-end gap-2">
-                <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(user)} title="编辑">
+                <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(user)} title="编辑" data-tooltip="编辑">
                   <Pencil size={16} />
                 </button>
-                <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(user)} title="删除">
+                <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(user)} title="删除" data-tooltip="删除">
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -144,10 +144,10 @@ export default function AdminUsers() {
                   <td className="px-5 py-4 text-slate-500">{new Date(user.createdAt).toLocaleString()}</td>
                   <td className="px-5 py-4">
                     <div className="flex justify-end gap-2">
-                      <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(user)} title="编辑">
+                      <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(user)} title="编辑" data-tooltip="编辑">
                         <Pencil size={16} />
                       </button>
-                      <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(user)} title="删除">
+                      <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(user)} title="删除" data-tooltip="删除">
                         <Trash2 size={16} />
                       </button>
                     </div>

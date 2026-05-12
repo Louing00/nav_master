@@ -269,6 +269,7 @@ export default function AdminApps() {
                         onClick={() => toggleGroup(group)}
                         className="focus-ring inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-mint dark:text-slate-400 dark:hover:bg-slate-900"
                         title={collapsed ? '展开分类' : '折叠分类'}
+                        data-tooltip={collapsed ? '展开分类' : '折叠分类'}
                         aria-expanded={!collapsed}
                       >
                         {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
@@ -298,6 +299,7 @@ export default function AdminApps() {
                                 app.visible ?? true ? 'bg-mint' : 'bg-slate-300 dark:bg-slate-700'
                               }`}
                               title={app.visible ?? true ? '点击隐藏' : '点击显示'}
+                              data-tooltip={app.visible ?? true ? '点击隐藏' : '点击显示'}
                               aria-pressed={app.visible ?? true}
                             >
                               <span className="sr-only">{app.visible ?? true ? '显示' : '隐藏'}</span>
@@ -318,10 +320,10 @@ export default function AdminApps() {
                             </div>
                           )}
                           <div className="mt-4 flex justify-end gap-2">
-                            <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(app)} title="编辑">
+                            <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(app)} title="编辑" data-tooltip="编辑">
                               <Pencil size={16} />
                             </button>
-                            <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(app.id)} title="删除">
+                            <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(app.id)} title="删除" data-tooltip="删除">
                               <Trash2 size={16} />
                             </button>
                           </div>
@@ -375,6 +377,7 @@ export default function AdminApps() {
                                   canDragSort ? 'cursor-grab hover:bg-slate-100 hover:text-mint active:cursor-grabbing dark:hover:bg-slate-800' : 'opacity-40'
                                 }`}
                                 title={canDragSort ? '拖拽排序' : '清空搜索后可排序'}
+                                data-tooltip={canDragSort ? '拖拽排序' : '清空搜索后可排序'}
                               >
                                 <GripVertical size={17} />
                               </span>
@@ -389,6 +392,7 @@ export default function AdminApps() {
                                   app.visible ?? true ? 'bg-mint' : 'bg-slate-300 dark:bg-slate-700'
                                 }`}
                                 title={app.visible ?? true ? '点击隐藏' : '点击显示'}
+                                data-tooltip={app.visible ?? true ? '点击隐藏' : '点击显示'}
                                 aria-pressed={app.visible ?? true}
                               >
                                 <span className="sr-only">{app.visible ?? true ? '显示' : '隐藏'}</span>
@@ -401,10 +405,10 @@ export default function AdminApps() {
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex justify-end gap-2">
-                                <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(app)} title="编辑">
+                                <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(app)} title="编辑" data-tooltip="编辑">
                                   <Pencil size={16} />
                                 </button>
-                                <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(app.id)} title="删除">
+                                <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(app.id)} title="删除" data-tooltip="删除">
                                   <Trash2 size={16} />
                                 </button>
                               </div>
