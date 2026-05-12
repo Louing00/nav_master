@@ -7,7 +7,6 @@ import AdminApps from './pages/AdminApps';
 import AdminCategories from './pages/AdminCategories';
 import AdminSettings from './pages/AdminSettings';
 import ImportExport from './pages/ImportExport';
-import SystemDetail from './pages/SystemDetail';
 import AdminSecurity from './pages/AdminSecurity';
 import AdminUsers from './pages/AdminUsers';
 
@@ -15,7 +14,6 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/systems/:id" element={<SystemDetail />} />
       <Route path="/admin/login" element={<Login />} />
       <Route path="/admin/register" element={<Register />} />
       <Route path="/admin" element={<AdminLayout />}>

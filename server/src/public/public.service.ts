@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 function parseTags(tags?: string | null): string[] {
@@ -23,7 +23,6 @@ function serializeApp(app: any) {
     icon: app.icon,
     tags: parseTags(app.tags),
     openInNewTab: app.openInNewTab,
-    hasFeatureIndex: app.features?.length > 0,
   };
 }
 
@@ -47,7 +46,6 @@ export class PublicService {
       include: {
         apps: {
           where: { visible: true, userId },
-          include: { features: { orderBy: { sortOrder: 'asc' } } },
           orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
         },
       },
@@ -66,7 +64,6 @@ export class PublicService {
 
     const uncategorized = await this.prisma.app.findMany({
       where: { visible: true, categoryId: null, userId },
-      include: { features: { orderBy: { sortOrder: 'asc' } } },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
 
@@ -81,36 +78,5 @@ export class PublicService {
     }
 
     return grouped;
-  }
-
-  async appDetail(userId: number, id: number) {
-    const app = await this.prisma.app.findFirst({
-      where: { id, visible: true, userId },
-      include: {
-        category: true,
-        features: { orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
-      },
-    });
-
-    if (!app) {
-      throw new NotFoundException('系统不存在');
-    }
-
-    return {
-      ...serializeApp(app),
-      category: app.category
-        ? {
-            id: app.category.id,
-            name: app.category.name,
-            icon: app.category.icon,
-          }
-        : null,
-      features: app.features.map((feature) => ({
-        id: feature.id,
-        title: feature.title,
-        description: feature.description,
-        anchor: feature.anchor,
-      })),
-    };
   }
 }

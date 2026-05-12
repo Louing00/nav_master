@@ -1,5 +1,4 @@
-import { ExternalLink, ListTree } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ExternalLink } from 'lucide-react';
 import type { NavApp } from '../types/app';
 
 type Props = {
@@ -35,15 +34,6 @@ export default function AppCard({ app }: Props) {
           ))}
         </div>
         <div className="flex shrink-0 gap-2">
-          {app.hasFeatureIndex && (
-            <Link
-              to={`/systems/${app.id}`}
-              className="focus-ring inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:border-mint hover:text-mint dark:border-slate-700 dark:text-slate-300"
-              title="功能索引"
-            >
-              <ListTree size={18} />
-            </Link>
-          )}
           <a
             href={app.url}
             target={app.openInNewTab ? '_blank' : '_self'}

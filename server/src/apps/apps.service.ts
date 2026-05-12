@@ -21,7 +21,6 @@ function serialize(app: any) {
   return {
     ...app,
     tags: parseTags(app.tags),
-    hasFeatureIndex: Array.isArray(app.features) ? app.features.length > 0 : undefined,
   };
 }
 
@@ -47,7 +46,7 @@ export class AppsService {
 
     const apps = await this.prisma.app.findMany({
       where,
-      include: { category: true, features: { orderBy: { sortOrder: 'asc' } } },
+      include: { category: true },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
 
@@ -62,7 +61,7 @@ export class AppsService {
         tags: JSON.stringify(dto.tags || []),
         userId,
       },
-      include: { category: true, features: true },
+      include: { category: true },
     });
     return serialize(app);
   }
@@ -76,7 +75,7 @@ export class AppsService {
         ...dto,
         tags: dto.tags === undefined ? undefined : JSON.stringify(dto.tags),
       },
-      include: { category: true, features: true },
+      include: { category: true },
     });
     return serialize(app);
   }
