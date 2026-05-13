@@ -6,6 +6,7 @@ import type { SiteSettings } from '../types/setting';
 export default function AdminSettings() {
   const [settings, setSettings] = useState<SiteSettings>({});
   const [saved, setSaved] = useState(false);
+  const autoHealthEnabled = settings.health_auto_check_enabled !== 'false';
 
   useEffect(() => {
     fetchSettings().then(setSettings);
@@ -44,6 +45,45 @@ export default function AdminSettings() {
           <span className="admin-label">页脚文本</span>
           <input className="admin-input mt-1" value={settings.footer_text || ''} onChange={(event) => setSettings({ ...settings, footer_text: event.target.value })} />
         </label>
+        <div className="rounded-lg border border-black/10 bg-[#f6f3ec]/70 p-4 dark:border-white/10 dark:bg-slate-950/50">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-semibold">自动健康检查</h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">后台按设置间隔检查已启用健康检查的应用。</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSettings({ ...settings, health_auto_check_enabled: autoHealthEnabled ? 'false' : 'true' })}
+              className={`focus-ring inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition ${
+                autoHealthEnabled ? 'bg-mint' : 'bg-slate-300 dark:bg-slate-700'
+              }`}
+              title={autoHealthEnabled ? '关闭自动检查' : '开启自动检查'}
+              data-tooltip={autoHealthEnabled ? '关闭自动检查' : '开启自动检查'}
+              aria-pressed={autoHealthEnabled}
+            >
+              <span className="sr-only">{autoHealthEnabled ? '已开启' : '已关闭'}</span>
+              <span className={`h-6 w-6 rounded-full bg-white shadow transition ${autoHealthEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          <label className="mt-4 block">
+            <span className="admin-label">检查间隔（分钟）</span>
+            <input
+              className="admin-input mt-1 sm:max-w-xs"
+              type="number"
+              min={1}
+              max={1440}
+              step={1}
+              disabled={!autoHealthEnabled}
+              value={settings.health_auto_check_interval_minutes || '30'}
+              onChange={(event) => setSettings({ ...settings, health_auto_check_interval_minutes: event.target.value })}
+            />
+          </label>
+          {settings.health_auto_check_last_at && (
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+              最近自动检查：{new Date(settings.health_auto_check_last_at).toLocaleString()}
+            </p>
+          )}
+        </div>
         {saved && <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">已保存</p>}
       </div>
     </form>

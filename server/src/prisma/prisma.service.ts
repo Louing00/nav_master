@@ -8,6 +8,8 @@ const settings = {
   logo: '✦',
   theme: 'auto',
   footer_text: 'Powered by AtlasGate',
+  health_auto_check_enabled: 'true',
+  health_auto_check_interval_minutes: '30',
 };
 
 @Injectable()
