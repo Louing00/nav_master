@@ -13,6 +13,11 @@ const ICON_PATHS = [
   '/favicon.png',
   '/favicon-32x32.png',
   '/favicon-16x16.png',
+  '/assets/img/favicon.png',
+  '/assets/favicon.png',
+  '/assets/images/favicon.png',
+  '/static/favicon.ico',
+  '/static/favicon.png',
   '/apple-touch-icon.png',
   '/apple-touch-icon-precomposed.png',
   '/android-chrome-192x192.png',
@@ -39,7 +44,7 @@ export default function AppIcon({ app, compact = false }: Props) {
   const textIcon = rawIcon && rawIcon !== DEFAULT_ICON ? rawIcon : '';
   const iconCandidates = useMemo(() => resolveIconCandidates(app.url), [app.url]);
   const iconCandidate = iconCandidates[iconCandidateIndex];
-  const showRemoteIcon = !textIcon && Boolean(iconCandidate);
+  const showRemoteIcon = Boolean(iconCandidate);
 
   useEffect(() => {
     setIconCandidateIndex(0);
