@@ -1,6 +1,6 @@
-import { ChevronDown, ChevronRight, GripVertical, Pencil, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical, Image, Pencil, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { checkAllAppHealth, checkAppHealth, createApp, deleteApp, fetchAdminApps, fetchCategories, updateApp } from '../api/admin';
+import { checkAllAppHealth, checkAppHealth, createApp, deleteApp, fetchAdminApps, fetchCategories, refreshAppIcon, updateApp } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import AdminModal from '../components/AdminModal';
 import { confirmDelete } from '../components/ConfirmDialog';
@@ -57,6 +57,7 @@ export default function AdminApps() {
   const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Set<string>>(new Set());
   const [actionError, setActionError] = useState('');
   const [checkingAppIds, setCheckingAppIds] = useState<Set<number>>(new Set());
+  const [refreshingIconIds, setRefreshingIconIds] = useState<Set<number>>(new Set());
   const [checkingAllHealth, setCheckingAllHealth] = useState(false);
   const { toast, showToast, clearToast } = useToast();
 
@@ -275,6 +276,30 @@ export default function AdminApps() {
     }
   }
 
+  async function runIconRefresh(app: NavApp) {
+    if (refreshingIconIds.has(app.id)) {
+      return;
+    }
+
+    setActionError('');
+    setRefreshingIconIds((current) => new Set(current).add(app.id));
+    try {
+      const refreshed = await refreshAppIcon(app.id);
+      setApps((current) => current.map((item) => (item.id === app.id ? { ...item, ...refreshed } : item)));
+      showToast(refreshed.resolvedIconUrl ? '图标已更新' : '未找到在线图标，已保留当前设置');
+    } catch (err) {
+      const message = getErrorMessage(err);
+      setActionError(message);
+      showToast(message, 'error');
+    } finally {
+      setRefreshingIconIds((current) => {
+        const next = new Set(current);
+        next.delete(app.id);
+        return next;
+      });
+    }
+  }
+
   async function runAllHealthChecks() {
     if (checkingAllHealth || checkingAppIds.size > 0) {
       return;
@@ -405,6 +430,16 @@ export default function AdminApps() {
                               <button
                                 type="button"
                                 className="focus-ring rounded-md p-2 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                onClick={() => runIconRefresh(app)}
+                                title="重新获取图标"
+                                data-tooltip="重新获取图标"
+                                disabled={refreshingIconIds.has(app.id)}
+                              >
+                                <Image size={16} className={refreshingIconIds.has(app.id) ? 'animate-pulse' : ''} />
+                              </button>
+                              <button
+                                type="button"
+                                className="focus-ring rounded-md p-2 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
                                 onClick={() => runHealthCheck(app)}
                                 title={app.healthEnabled === false ? '已关闭健康检查' : '立即检查'}
                                 data-tooltip={app.healthEnabled === false ? '已关闭健康检查' : '立即检查'}
@@ -502,6 +537,16 @@ export default function AdminApps() {
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex justify-end gap-2">
+                                <button
+                                  type="button"
+                                  className="focus-ring rounded-md p-2 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                  onClick={() => runIconRefresh(app)}
+                                  title="重新获取图标"
+                                  data-tooltip="重新获取图标"
+                                  disabled={refreshingIconIds.has(app.id)}
+                                >
+                                  <Image size={16} className={refreshingIconIds.has(app.id) ? 'animate-pulse' : ''} />
+                                </button>
                                 <button
                                   type="button"
                                   className="focus-ring rounded-md p-2 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"

@@ -36,6 +36,11 @@ export class AppsController {
     return this.appsService.checkHealth(request.user.id, id);
   }
 
+  @Post(':id/refresh-icon')
+  refreshIcon(@Req() request: AuthRequest, @Param('id', ParseIntPipe) id: number) {
+    return this.appsService.refreshIcon(request.user.id, id);
+  }
+
   @Put(':id')
   update(@Req() request: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAppDto) {
     return this.appsService.update(request.user.id, id, dto);

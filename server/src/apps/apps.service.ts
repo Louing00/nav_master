@@ -78,7 +78,7 @@ export class AppsService {
     const existing = await this.ensureExists(userId, id);
     await this.ensureCategoryBelongsToUser(userId, dto.categoryId);
     const urlChanged = dto.url !== undefined && dto.url !== existing.url;
-    const shouldResolveIcon = urlChanged || !existing.iconResolvedAt;
+    const shouldResolveIcon = urlChanged || !existing.resolvedIconUrl;
     const iconCache = shouldResolveIcon ? await this.resolveIconCache(dto.url || existing.url) : {};
     const healthDisabled = dto.healthEnabled === false;
     const app = await this.prisma.app.update({
@@ -104,6 +104,16 @@ export class AppsService {
   async checkAllHealth(userId: number) {
     const apps = await this.healthCheckService.checkAll(userId);
     return apps.map(serialize);
+  }
+
+  async refreshIcon(userId: number, id: number) {
+    const existing = await this.ensureExists(userId, id);
+    const app = await this.prisma.app.update({
+      where: { id },
+      data: await this.resolveIconCache(existing.url),
+      include: { category: true },
+    });
+    return serialize(app);
   }
 
   async remove(userId: number, id: number) {

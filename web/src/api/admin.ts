@@ -34,6 +34,11 @@ export async function checkAppHealth(id: number) {
   return data;
 }
 
+export async function refreshAppIcon(id: number) {
+  const { data } = await client.post<NavApp>(`/admin/apps/${id}/refresh-icon`);
+  return data;
+}
+
 export async function checkAllAppHealth() {
   const { data } = await client.post<NavApp[]>('/admin/apps/health-check');
   return data;

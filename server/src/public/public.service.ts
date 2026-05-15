@@ -3,7 +3,7 @@ import { AppIconService } from '../apps/app-icon.service';
 import { HealthCheckService } from '../apps/health-check.service';
 import { PrismaService } from '../prisma/prisma.service';
 
-const NEGATIVE_ICON_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const NEGATIVE_ICON_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
 const ICON_CACHE_RESPONSE_BUDGET_MS = 1200;
 
 function parseTags(tags?: string | null): string[] {
