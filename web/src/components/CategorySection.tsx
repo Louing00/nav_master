@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, RefreshCw } from 'lucide-react';
 import AppCard from './AppCard';
 import type { NavCategory } from '../types/app';
 
@@ -8,9 +8,10 @@ type Props = {
   checkingHealth?: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
   onHealthCheck: () => void;
+  onAddApp: () => void;
 };
 
-export default function CategorySection({ category, collapsed, checkingHealth = false, onCollapsedChange, onHealthCheck }: Props) {
+export default function CategorySection({ category, collapsed, checkingHealth = false, onCollapsedChange, onHealthCheck, onAddApp }: Props) {
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
       <div className="mb-3 flex items-center justify-between gap-4 sm:mb-4">
@@ -45,7 +46,16 @@ export default function CategorySection({ category, collapsed, checkingHealth = 
             </p>
           )}
         </div>
-        <span className="shrink-0 text-sm text-slate-500 dark:text-slate-400">{category.apps.length} 个入口</span>
+        <button
+          type="button"
+          onClick={onAddApp}
+          className="focus-ring inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white/45 px-2.5 text-sm font-semibold text-slate-600 transition hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-white/5 dark:text-slate-300"
+          title="新增入口"
+          data-tooltip="新增入口"
+        >
+          <Plus size={16} />
+          <span className="hidden sm:inline">新增入口</span>
+        </button>
       </div>
       <div className={collapsed ? 'grid gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 xl:grid-cols-5' : 'grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3'}>
         {category.apps.map((app) => (

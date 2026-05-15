@@ -1,16 +1,31 @@
-import { LayoutGrid, LogOut, Menu, Moon, Search, Shield, Sun, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { LayoutGrid, LogOut, Menu, Moon, Save, Search, Shield, Sun, X } from 'lucide-react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import AdminModal from '../components/AdminModal';
 import CategorySection from '../components/CategorySection';
 import EmptyState from '../components/EmptyState';
 import { logout } from '../api/auth';
+import { createApp, fetchAdminApps, fetchCategories as fetchAdminCategories } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import { checkPublicCategoryHealth, fetchPublicApps, fetchPublicConfig } from '../api/public';
 import Toast, { useToast } from '../components/Toast';
 import type { NavApp, NavCategory } from '../types/app';
+import type { AdminCategory } from '../types/category';
 import type { SiteSettings } from '../types/setting';
 
 const COLLAPSED_CATEGORIES_KEY = 'atlasgate.home.collapsedCategories';
+const quickAppBlank = {
+  name: '',
+  url: '',
+  description: '',
+  icon: '',
+  categoryId: undefined as number | undefined,
+  tags: '',
+  sortOrder: 0,
+  visible: true,
+  openInNewTab: true,
+  healthEnabled: true,
+};
 
 function readCollapsedCategories() {
   try {
@@ -48,6 +63,12 @@ export default function Home() {
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>(readCollapsedCategories);
   const [checkingCategoryIds, setCheckingCategoryIds] = useState<Set<number>>(new Set());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [adminCategories, setAdminCategories] = useState<AdminCategory[]>([]);
+  const [adminApps, setAdminApps] = useState<NavApp[]>([]);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddForm, setQuickAddForm] = useState(quickAppBlank);
+  const [quickAddError, setQuickAddError] = useState('');
+  const [quickAddSaving, setQuickAddSaving] = useState(false);
   const { toast, showToast, clearToast } = useToast();
 
   useEffect(() => {
@@ -140,6 +161,67 @@ export default function Home() {
         next.delete(category.id);
         return next;
       });
+    }
+  }
+
+  async function refreshApps() {
+    setCategories(await fetchPublicApps());
+  }
+
+  function nextSortOrder(categoryId?: number) {
+    const groupApps = adminApps.filter((app) => (categoryId ? app.categoryId === categoryId : !app.categoryId));
+    return groupApps.reduce((max, app) => Math.max(max, app.sortOrder || 0), 0) + 10;
+  }
+
+  async function startQuickAdd(category: NavCategory) {
+    const categoryId = category.id === 0 ? undefined : category.id;
+    setQuickAddForm({ ...quickAppBlank, categoryId });
+    setQuickAddError('');
+    setQuickAddOpen(true);
+
+    try {
+      const [categoryRows, appRows] = await Promise.all([fetchAdminCategories(), fetchAdminApps()]);
+      setAdminCategories(categoryRows);
+      setAdminApps(appRows);
+    } catch (err) {
+      const message = getErrorMessage(err);
+      setQuickAddError(message);
+      showToast(message, 'error');
+    }
+  }
+
+  function closeQuickAdd() {
+    setQuickAddOpen(false);
+    setQuickAddError('');
+    setQuickAddSaving(false);
+    setQuickAddForm(quickAppBlank);
+  }
+
+  async function submitQuickAdd(event: FormEvent) {
+    event.preventDefault();
+    setQuickAddError('');
+    setQuickAddSaving(true);
+
+    const categoryId = quickAddForm.categoryId ? Number(quickAddForm.categoryId) : undefined;
+    const payload = {
+      ...quickAddForm,
+      categoryId,
+      tags: quickAddForm.tags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+      sortOrder: nextSortOrder(categoryId),
+    };
+
+    try {
+      await createApp(payload);
+      showToast('入口已创建');
+      closeQuickAdd();
+      await refreshApps();
+    } catch (err) {
+      setQuickAddError(getErrorMessage(err));
+    } finally {
+      setQuickAddSaving(false);
     }
   }
 
@@ -274,6 +356,7 @@ export default function Home() {
               checkingHealth={checkingCategoryIds.has(category.id)}
               onCollapsedChange={(collapsed) => setCategoryCollapsed(category.id, collapsed)}
               onHealthCheck={() => runCategoryHealthCheck(category)}
+              onAddApp={() => startQuickAdd(category)}
             />
           ))
         ) : (
@@ -286,6 +369,86 @@ export default function Home() {
       <footer className="mx-auto max-w-7xl px-4 py-8 text-sm text-slate-500 sm:px-6 lg:px-8 dark:text-slate-400">
         {settings.footer_text || 'Powered by AtlasGate'}
       </footer>
+      {quickAddOpen && (
+        <form onSubmit={submitQuickAdd}>
+          <AdminModal
+            title="新增应用"
+            onClose={closeQuickAdd}
+            footer={
+              <>
+                <button
+                  type="button"
+                  className="focus-ring rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  onClick={closeQuickAdd}
+                >
+                  取消
+                </button>
+                <button
+                  className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60"
+                  type="submit"
+                  disabled={quickAddSaving}
+                >
+                  <Save size={16} />
+                  {quickAddSaving ? '保存中' : '保存'}
+                </button>
+              </>
+            }
+          >
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <label className="sm:col-span-1">
+                <span className="admin-label">系统名称</span>
+                <input className="admin-input mt-1" required value={quickAddForm.name} onChange={(event) => setQuickAddForm({ ...quickAddForm, name: event.target.value })} autoFocus />
+              </label>
+              <label className="sm:col-span-1">
+                <span className="admin-label">访问地址</span>
+                <input className="admin-input mt-1" required value={quickAddForm.url} onChange={(event) => setQuickAddForm({ ...quickAddForm, url: event.target.value })} />
+              </label>
+              <label className="sm:col-span-2">
+                <span className="admin-label">描述</span>
+                <textarea className="admin-input mt-1 min-h-20" value={quickAddForm.description} onChange={(event) => setQuickAddForm({ ...quickAddForm, description: event.target.value })} />
+              </label>
+              <label>
+                <span className="admin-label">图标</span>
+                <input className="admin-input mt-1" value={quickAddForm.icon} onChange={(event) => setQuickAddForm({ ...quickAddForm, icon: event.target.value })} />
+              </label>
+              <label>
+                <span className="admin-label">分类</span>
+                <select
+                  className="admin-input mt-1"
+                  value={quickAddForm.categoryId || ''}
+                  onChange={(event) => setQuickAddForm({ ...quickAddForm, categoryId: event.target.value ? Number(event.target.value) : undefined })}
+                >
+                  <option value="">未分类</option>
+                  {adminCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span className="admin-label">标签</span>
+                <input className="admin-input mt-1" value={quickAddForm.tags} onChange={(event) => setQuickAddForm({ ...quickAddForm, tags: event.target.value })} placeholder="用英文逗号分隔" />
+              </label>
+              <div className="flex flex-wrap gap-4 text-sm sm:col-span-2">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={quickAddForm.visible} onChange={(event) => setQuickAddForm({ ...quickAddForm, visible: event.target.checked })} />
+                  前台显示
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={quickAddForm.openInNewTab} onChange={(event) => setQuickAddForm({ ...quickAddForm, openInNewTab: event.target.checked })} />
+                  新窗口打开
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={quickAddForm.healthEnabled} onChange={(event) => setQuickAddForm({ ...quickAddForm, healthEnabled: event.target.checked })} />
+                  启用健康检查
+                </label>
+              </div>
+              {quickAddError && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200 sm:col-span-2">{quickAddError}</p>}
+            </div>
+          </AdminModal>
+        </form>
+      )}
       <Toast toast={toast} onClose={clearToast} />
     </main>
   );

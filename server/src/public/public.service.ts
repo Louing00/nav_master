@@ -4,6 +4,7 @@ import { HealthCheckService } from '../apps/health-check.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 const NEGATIVE_ICON_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const ICON_CACHE_RESPONSE_BUDGET_MS = 1200;
 
 function parseTags(tags?: string | null): string[] {
   if (!tags) {
@@ -132,26 +133,28 @@ export class PublicService {
     userId: number,
     apps: Array<{ id: number; url: string; resolvedIconUrl?: string | null; iconResolvedAt?: Date | null }>,
   ) {
-    for (const app of apps) {
-      if (!this.shouldResolveIcon(app)) {
-        continue;
-      }
+    const tasks = apps.filter((app) => this.shouldResolveIcon(app)).map((app) => this.resolveAndCacheIcon(userId, app));
+    await Promise.race([Promise.allSettled(tasks), new Promise((resolve) => setTimeout(resolve, ICON_CACHE_RESPONSE_BUDGET_MS))]);
+  }
 
-      try {
-        const resolvedIconUrl = await this.appIconService.resolve(app.url);
-        const iconResolvedAt = new Date();
-        await this.prisma.app.updateMany({
-          where: { id: app.id, userId },
-          data: {
-            resolvedIconUrl,
-            iconResolvedAt,
-          },
-        });
-        app.resolvedIconUrl = resolvedIconUrl;
-        app.iconResolvedAt = iconResolvedAt;
-      } catch {
-        // Icon cache refresh is best-effort; app listing should never fail because of it.
-      }
+  private async resolveAndCacheIcon(
+    userId: number,
+    app: { id: number; url: string; resolvedIconUrl?: string | null; iconResolvedAt?: Date | null },
+  ) {
+    try {
+      const resolvedIconUrl = await this.appIconService.resolve(app.url);
+      const iconResolvedAt = new Date();
+      await this.prisma.app.updateMany({
+        where: { id: app.id, userId },
+        data: {
+          resolvedIconUrl,
+          iconResolvedAt,
+        },
+      });
+      app.resolvedIconUrl = resolvedIconUrl;
+      app.iconResolvedAt = iconResolvedAt;
+    } catch {
+      // Icon cache refresh is best-effort; app listing should never fail because of it.
     }
   }
 
