@@ -3,6 +3,8 @@ import { AppIconService } from '../apps/app-icon.service';
 import { HealthCheckService } from '../apps/health-check.service';
 import { PrismaService } from '../prisma/prisma.service';
 
+const NEGATIVE_ICON_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
 function parseTags(tags?: string | null): string[] {
   if (!tags) {
     return [];
@@ -64,7 +66,7 @@ export class PublicService {
       },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
-    void this.cacheMissingIcons(userId, categories.flatMap((category) => category.apps));
+    await this.ensureIconCache(userId, categories.flatMap((category) => category.apps));
 
     const grouped = categories
       .map((category) => ({
@@ -80,7 +82,7 @@ export class PublicService {
       where: { visible: true, categoryId: null, userId },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
-    void this.cacheMissingIcons(userId, uncategorized);
+    await this.ensureIconCache(userId, uncategorized);
 
     if (uncategorized.length) {
       grouped.push({
@@ -126,23 +128,42 @@ export class PublicService {
     return checked.map(serializeApp);
   }
 
-  private async cacheMissingIcons(userId: number, apps: Array<{ id: number; url: string; iconResolvedAt?: Date | null }>) {
+  private async ensureIconCache(
+    userId: number,
+    apps: Array<{ id: number; url: string; resolvedIconUrl?: string | null; iconResolvedAt?: Date | null }>,
+  ) {
     for (const app of apps) {
-      if (app.iconResolvedAt) {
+      if (!this.shouldResolveIcon(app)) {
         continue;
       }
 
       try {
+        const resolvedIconUrl = await this.appIconService.resolve(app.url);
+        const iconResolvedAt = new Date();
         await this.prisma.app.updateMany({
-          where: { id: app.id, userId, iconResolvedAt: null },
+          where: { id: app.id, userId },
           data: {
-            resolvedIconUrl: await this.appIconService.resolve(app.url),
-            iconResolvedAt: new Date(),
+            resolvedIconUrl,
+            iconResolvedAt,
           },
         });
+        app.resolvedIconUrl = resolvedIconUrl;
+        app.iconResolvedAt = iconResolvedAt;
       } catch {
         // Icon cache refresh is best-effort; app listing should never fail because of it.
       }
     }
+  }
+
+  private shouldResolveIcon(app: { resolvedIconUrl?: string | null; iconResolvedAt?: Date | null }) {
+    if (app.resolvedIconUrl) {
+      return false;
+    }
+
+    if (!app.iconResolvedAt) {
+      return true;
+    }
+
+    return Date.now() - new Date(app.iconResolvedAt).getTime() > NEGATIVE_ICON_CACHE_TTL_MS;
   }
 }
