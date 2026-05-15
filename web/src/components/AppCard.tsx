@@ -26,8 +26,13 @@ export default function AppCard({ app, compact = false }: Props) {
   }
 
   return (
-    <article className="surface group overflow-hidden rounded-lg shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-mint/30 hover:bg-white hover:shadow-[0_12px_36px_rgba(15,23,42,0.08)] dark:hover:bg-slate-900/90">
-      <a href={app.url} target={app.openInNewTab ? '_blank' : '_self'} rel="noreferrer" className="focus-ring block min-w-0 rounded-lg p-3.5 sm:p-5">
+    <article className="surface group h-full overflow-hidden rounded-lg shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-mint/30 hover:bg-white hover:shadow-[0_12px_36px_rgba(15,23,42,0.08)] dark:hover:bg-slate-900/90">
+      <a
+        href={app.url}
+        target={app.openInNewTab ? '_blank' : '_self'}
+        rel="noreferrer"
+        className="focus-ring flex h-full min-w-0 flex-col rounded-lg p-3.5 sm:p-5"
+      >
         <div className="flex min-w-0 items-start gap-3 sm:gap-4">
           <AppIcon app={app} />
           <div className="min-w-0 flex-1">
@@ -41,16 +46,16 @@ export default function AppCard({ app, compact = false }: Props) {
           </div>
         </div>
 
-        <div className="mt-3 flex items-end justify-between gap-3 sm:mt-5">
+        <div className="mt-auto flex items-end justify-between gap-3 pt-3 sm:pt-5">
           <div className="flex min-w-0 flex-wrap gap-1.5 overflow-hidden sm:gap-2">
-          {app.tags.slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="max-w-full truncate rounded-full bg-ember/10 px-2.5 py-1 text-xs font-semibold text-ember dark:bg-ember/15 dark:text-orange-200"
-            >
-              {tag}
-            </span>
-          ))}
+            {app.tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="max-w-full truncate rounded-full bg-ember/10 px-2.5 py-1 text-xs font-semibold text-ember dark:bg-ember/15 dark:text-orange-200"
+              >
+                {tag}
+              </span>
+            ))}
           </div>
           <span
             className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white/70 text-slate-600 transition group-hover:border-mint/40 group-hover:text-mint sm:opacity-70 sm:group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-300"

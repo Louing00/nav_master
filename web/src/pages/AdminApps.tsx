@@ -13,7 +13,7 @@ const blank = {
   name: '',
   url: '',
   description: '',
-  icon: '⌁',
+  icon: '',
   categoryId: undefined as number | undefined,
   tags: '',
   sortOrder: 0,
