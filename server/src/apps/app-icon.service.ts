@@ -36,12 +36,14 @@ function readAttribute(tag: string, name: string) {
 function extractLinkedIcons(html: string, baseUrl: string) {
   const tags = html.match(/<link\b[^>]*>/gi) || [];
   return tags
-    .map((tag) => {
+    .map((tag, index) => {
       const rel = readAttribute(tag, 'rel');
       const href = readAttribute(tag, 'href');
-      return { rel, href };
+      const type = readAttribute(tag, 'type');
+      return { rel, href, type, index };
     })
     .filter((item) => item.href && /(^|\s)(shortcut\s+icon|icon|apple-touch-icon|mask-icon)(\s|$)/i.test(item.rel))
+    .sort((a, b) => scoreLinkedIcon(a) - scoreLinkedIcon(b) || a.index - b.index)
     .map((item) => {
       try {
         return new URL(item.href, baseUrl).href;
@@ -50,6 +52,31 @@ function extractLinkedIcons(html: string, baseUrl: string) {
       }
     })
     .filter(Boolean);
+}
+
+function scoreLinkedIcon(item: { rel: string; href: string; type: string }) {
+  const rel = item.rel.toLowerCase();
+  const href = item.href.toLowerCase();
+  const type = item.type.toLowerCase();
+  let score = 0;
+
+  if (rel.includes('apple-touch-icon')) {
+    score += 40;
+  } else if (rel.includes('mask-icon')) {
+    score += 50;
+  } else if (rel.includes('shortcut icon')) {
+    score += 5;
+  } else if (/(^|\s)icon(\s|$)/.test(rel)) {
+    score += 0;
+  }
+
+  if (href.endsWith('.svg') || type.includes('svg')) {
+    score -= 3;
+  } else if (href.includes('favicon')) {
+    score -= 2;
+  }
+
+  return score;
 }
 
 function unique(values: string[]) {
