@@ -41,6 +41,8 @@ model App {
   url           String
   description   String?
   icon          String?
+  resolvedIconUrl String?
+  iconResolvedAt DateTime?
   categoryId    Int?
   tags          String?
   sortOrder     Int          @default(0)

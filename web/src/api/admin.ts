@@ -3,7 +3,10 @@ import type { NavApp } from '../types/app';
 import type { AdminCategory } from '../types/category';
 import type { SiteSettings } from '../types/setting';
 
-export type AppPayload = Omit<NavApp, 'id' | 'healthStatus' | 'healthCheckedAt' | 'healthLatencyMs' | 'healthError'>;
+export type AppPayload = Omit<
+  NavApp,
+  'id' | 'resolvedIconUrl' | 'iconResolvedAt' | 'healthStatus' | 'healthCheckedAt' | 'healthLatencyMs' | 'healthError'
+>;
 export type CategoryPayload = Omit<AdminCategory, 'id' | '_count'>;
 
 export async function fetchAdminApps() {

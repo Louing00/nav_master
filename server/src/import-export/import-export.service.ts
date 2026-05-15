@@ -70,7 +70,7 @@ export class ImportExportService {
       }, {}),
       categories: categories.map(({ userId: _userId, ...category }) => category),
       apps: apps.map((app) => {
-        const { userId: _userId, category, ...payload } = app;
+        const { userId: _userId, category, resolvedIconUrl: _resolvedIconUrl, iconResolvedAt: _iconResolvedAt, ...payload } = app;
         const cleanCategory = category
           ? {
               id: category.id,

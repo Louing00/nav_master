@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AppIconService } from './app-icon.service';
 import { CreateAppDto } from './dto/create-app.dto';
 import { UpdateAppDto } from './dto/update-app.dto';
 import { HealthCheckService } from './health-check.service';
@@ -29,6 +30,7 @@ function serialize(app: any) {
 export class AppsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly appIconService: AppIconService,
     private readonly healthCheckService: HealthCheckService,
   ) {}
 
@@ -59,11 +61,13 @@ export class AppsService {
 
   async create(userId: number, dto: CreateAppDto) {
     await this.ensureCategoryBelongsToUser(userId, dto.categoryId);
+    const iconCache = await this.resolveIconCache(dto.url);
     const app = await this.prisma.app.create({
       data: {
         ...dto,
         tags: JSON.stringify(dto.tags || []),
         userId,
+        ...iconCache,
       },
       include: { category: true },
     });
@@ -74,12 +78,15 @@ export class AppsService {
     const existing = await this.ensureExists(userId, id);
     await this.ensureCategoryBelongsToUser(userId, dto.categoryId);
     const urlChanged = dto.url !== undefined && dto.url !== existing.url;
+    const shouldResolveIcon = urlChanged || !existing.iconResolvedAt;
+    const iconCache = shouldResolveIcon ? await this.resolveIconCache(dto.url || existing.url) : {};
     const healthDisabled = dto.healthEnabled === false;
     const app = await this.prisma.app.update({
       where: { id },
       data: {
         ...dto,
         tags: dto.tags === undefined ? undefined : JSON.stringify(dto.tags),
+        ...iconCache,
         healthStatus: healthDisabled || urlChanged ? 'unknown' : undefined,
         healthCheckedAt: healthDisabled || urlChanged ? null : undefined,
         healthLatencyMs: healthDisabled || urlChanged ? null : undefined,
@@ -122,5 +129,12 @@ export class AppsService {
     if (!category) {
       throw new BadRequestException('分类不存在或无权使用');
     }
+  }
+
+  private async resolveIconCache(url: string) {
+    return {
+      resolvedIconUrl: await this.appIconService.resolve(url),
+      iconResolvedAt: new Date(),
+    };
   }
 }

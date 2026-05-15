@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { AppIconService } from '../apps/app-icon.service';
 import { HealthCheckService } from '../apps/health-check.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -22,6 +23,8 @@ function serializeApp(app: any) {
     url: app.url,
     description: app.description,
     icon: app.icon,
+    resolvedIconUrl: app.resolvedIconUrl,
+    iconResolvedAt: app.iconResolvedAt,
     tags: parseTags(app.tags),
     openInNewTab: app.openInNewTab,
     healthStatus: app.healthStatus,
@@ -36,6 +39,7 @@ function serializeApp(app: any) {
 export class PublicService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly appIconService: AppIconService,
     private readonly healthCheckService: HealthCheckService,
   ) {}
 
@@ -60,6 +64,7 @@ export class PublicService {
       },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
+    void this.cacheMissingIcons(userId, categories.flatMap((category) => category.apps));
 
     const grouped = categories
       .map((category) => ({
@@ -75,6 +80,7 @@ export class PublicService {
       where: { visible: true, categoryId: null, userId },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
+    void this.cacheMissingIcons(userId, uncategorized);
 
     if (uncategorized.length) {
       grouped.push({
@@ -118,5 +124,25 @@ export class PublicService {
     }
 
     return checked.map(serializeApp);
+  }
+
+  private async cacheMissingIcons(userId: number, apps: Array<{ id: number; url: string; iconResolvedAt?: Date | null }>) {
+    for (const app of apps) {
+      if (app.iconResolvedAt) {
+        continue;
+      }
+
+      try {
+        await this.prisma.app.updateMany({
+          where: { id: app.id, userId, iconResolvedAt: null },
+          data: {
+            resolvedIconUrl: await this.appIconService.resolve(app.url),
+            iconResolvedAt: new Date(),
+          },
+        });
+      } catch {
+        // Icon cache refresh is best-effort; app listing should never fail because of it.
+      }
+    }
   }
 }

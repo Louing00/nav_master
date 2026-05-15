@@ -2,53 +2,22 @@ import { useEffect, useMemo, useState } from 'react';
 import type { NavApp } from '../types/app';
 
 type Props = {
-  app: Pick<NavApp, 'icon' | 'name' | 'url'>;
+  app: Pick<NavApp, 'icon' | 'name' | 'resolvedIconUrl'>;
   compact?: boolean;
 };
 
 const DEFAULT_ICON = '⌁';
-const ICON_PATHS = [
-  '/favicon.ico',
-  '/favicon.svg',
-  '/favicon.png',
-  '/favicon-32x32.png',
-  '/favicon-16x16.png',
-  '/assets/img/favicon.png',
-  '/assets/favicon.png',
-  '/assets/images/favicon.png',
-  '/static/favicon.ico',
-  '/static/favicon.png',
-  '/apple-touch-icon.png',
-  '/apple-touch-icon-precomposed.png',
-  '/android-chrome-192x192.png',
-  '/android-chrome-512x512.png',
-  '/mstile-150x150.png',
-  '/icon.svg',
-  '/icon.png',
-  '/logo.svg',
-  '/logo.png',
-];
-
-function resolveIconCandidates(url: string) {
-  try {
-    const origin = new URL(url).origin;
-    return ICON_PATHS.map((path) => new URL(path, origin).href);
-  } catch {
-    return [];
-  }
-}
 
 export default function AppIcon({ app, compact = false }: Props) {
-  const [iconCandidateIndex, setIconCandidateIndex] = useState(0);
+  const [remoteIconFailed, setRemoteIconFailed] = useState(false);
   const rawIcon = app.icon?.trim();
   const textIcon = rawIcon && rawIcon !== DEFAULT_ICON ? rawIcon : '';
-  const iconCandidates = useMemo(() => resolveIconCandidates(app.url), [app.url]);
-  const iconCandidate = iconCandidates[iconCandidateIndex];
-  const showRemoteIcon = Boolean(iconCandidate);
+  const remoteIconUrl = useMemo(() => app.resolvedIconUrl?.trim() || '', [app.resolvedIconUrl]);
+  const showRemoteIcon = Boolean(remoteIconUrl && !remoteIconFailed);
 
   useEffect(() => {
-    setIconCandidateIndex(0);
-  }, [app.url, textIcon]);
+    setRemoteIconFailed(false);
+  }, [remoteIconUrl]);
 
   return (
     <span
@@ -59,10 +28,10 @@ export default function AppIcon({ app, compact = false }: Props) {
     >
       {showRemoteIcon ? (
         <img
-          src={iconCandidate}
+          src={remoteIconUrl}
           alt=""
           className={compact ? 'h-5 w-5 object-contain' : 'h-6 w-6 object-contain sm:h-7 sm:w-7'}
-          onError={() => setIconCandidateIndex((index) => index + 1)}
+          onError={() => setRemoteIconFailed(true)}
         />
       ) : (
         <span className="leading-none">{textIcon || DEFAULT_ICON}</span>

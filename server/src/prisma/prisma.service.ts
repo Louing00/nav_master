@@ -56,6 +56,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         "url" TEXT NOT NULL,
         "description" TEXT,
         "icon" TEXT,
+        "resolvedIconUrl" TEXT,
+        "iconResolvedAt" DATETIME,
         "categoryId" INTEGER,
         "tags" TEXT,
         "sortOrder" INTEGER NOT NULL DEFAULT 0,
@@ -75,6 +77,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
     `);
     await this.ensureColumn('Category', 'userId', '"userId" INTEGER');
     await this.ensureColumn('App', 'userId', '"userId" INTEGER');
+    await this.ensureColumn('App', 'resolvedIconUrl', '"resolvedIconUrl" TEXT');
+    await this.ensureColumn('App', 'iconResolvedAt', '"iconResolvedAt" DATETIME');
     await this.ensureColumn('App', 'healthStatus', '"healthStatus" TEXT NOT NULL DEFAULT \'unknown\'');
     await this.ensureColumn('App', 'healthCheckedAt', '"healthCheckedAt" DATETIME');
     await this.ensureColumn('App', 'healthLatencyMs', '"healthLatencyMs" INTEGER');

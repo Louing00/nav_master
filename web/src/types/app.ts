@@ -4,6 +4,8 @@ export type NavApp = {
   url: string;
   description?: string | null;
   icon?: string | null;
+  resolvedIconUrl?: string | null;
+  iconResolvedAt?: string | null;
   tags: string[];
   openInNewTab: boolean;
   visible?: boolean;
