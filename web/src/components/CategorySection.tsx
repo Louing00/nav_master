@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, GripVertical, Plus, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, RefreshCw } from 'lucide-react';
 import type { DragEvent } from 'react';
 import AppCard from './AppCard';
 import type { NavCategory } from '../types/app';
@@ -96,14 +96,6 @@ export default function CategorySection({
             onDragEnd={onAppDragEnd}
             aria-grabbed={quickSortEnabled && sortingAppId === app.id}
           >
-            {quickSortEnabled && (
-              <span
-                className="pointer-events-none absolute right-2 top-2 z-10 inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-white/85 text-slate-400 shadow-sm dark:border-slate-700 dark:bg-slate-900/85"
-                data-tooltip="拖动排序"
-              >
-                <GripVertical size={14} />
-              </span>
-            )}
             <AppCard app={app} compact={collapsed} sortMode={quickSortEnabled} />
           </div>
         ))}
