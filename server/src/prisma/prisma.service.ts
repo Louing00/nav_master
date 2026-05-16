@@ -8,6 +8,7 @@ const settings = {
   logo: '✦',
   theme: 'auto',
   footer_text: 'Powered by AtlasGate',
+  home_quick_sort_enabled: 'false',
   health_auto_check_enabled: 'true',
   health_auto_check_interval_minutes: '30',
 };

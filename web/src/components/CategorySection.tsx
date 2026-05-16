@@ -1,4 +1,5 @@
-import { ChevronDown, ChevronRight, Plus, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical, Plus, RefreshCw } from 'lucide-react';
+import type { DragEvent } from 'react';
 import AppCard from './AppCard';
 import type { NavCategory } from '../types/app';
 
@@ -9,9 +10,32 @@ type Props = {
   onCollapsedChange: (collapsed: boolean) => void;
   onHealthCheck: () => void;
   onAddApp: () => void;
+  quickSortEnabled?: boolean;
+  sortingAppId?: number | null;
+  dragOverAppId?: number | null;
+  sortSaving?: boolean;
+  onAppDragStart?: (event: DragEvent<HTMLDivElement>, appId: number) => void;
+  onAppDragOver?: (event: DragEvent<HTMLDivElement>, appId: number) => void;
+  onAppDrop?: (event: DragEvent<HTMLDivElement>, appId: number) => void;
+  onAppDragEnd?: () => void;
 };
 
-export default function CategorySection({ category, collapsed, checkingHealth = false, onCollapsedChange, onHealthCheck, onAddApp }: Props) {
+export default function CategorySection({
+  category,
+  collapsed,
+  checkingHealth = false,
+  onCollapsedChange,
+  onHealthCheck,
+  onAddApp,
+  quickSortEnabled = false,
+  sortingAppId,
+  dragOverAppId,
+  sortSaving = false,
+  onAppDragStart,
+  onAppDragOver,
+  onAppDrop,
+  onAppDragEnd,
+}: Props) {
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
       <div className="mb-3 flex items-center justify-between gap-4 sm:mb-4">
@@ -59,7 +83,29 @@ export default function CategorySection({ category, collapsed, checkingHealth = 
       </div>
       <div className={collapsed ? 'grid gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 xl:grid-cols-5' : 'grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3'}>
         {category.apps.map((app) => (
-          <AppCard key={app.id} app={app} compact={collapsed} />
+          <div
+            key={app.id}
+            className={`relative h-full rounded-lg transition ${
+              sortingAppId === app.id ? 'scale-[0.99] opacity-60' : ''
+            } ${dragOverAppId === app.id ? 'ring-2 ring-mint/50 ring-offset-2 ring-offset-[#f6f3ec] dark:ring-offset-slate-950' : ''}`}
+            draggable={quickSortEnabled && !sortSaving}
+            onDragStart={(event) => onAppDragStart?.(event, app.id)}
+            onDragEnter={(event) => onAppDragOver?.(event, app.id)}
+            onDragOver={(event) => onAppDragOver?.(event, app.id)}
+            onDrop={(event) => onAppDrop?.(event, app.id)}
+            onDragEnd={onAppDragEnd}
+            aria-grabbed={quickSortEnabled && sortingAppId === app.id}
+          >
+            {quickSortEnabled && (
+              <span
+                className="pointer-events-none absolute right-2 top-2 z-10 inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-white/85 text-slate-400 shadow-sm dark:border-slate-700 dark:bg-slate-900/85"
+                data-tooltip="拖动排序"
+              >
+                <GripVertical size={14} />
+              </span>
+            )}
+            <AppCard app={app} compact={collapsed} sortMode={quickSortEnabled} />
+          </div>
         ))}
       </div>
     </section>

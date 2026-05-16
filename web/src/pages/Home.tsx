@@ -1,5 +1,5 @@
 import { LayoutGrid, LogOut, Menu, Moon, Save, Search, Shield, Sun, X } from 'lucide-react';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminModal from '../components/AdminModal';
 import CategorySection from '../components/CategorySection';
@@ -7,7 +7,7 @@ import EmptyState from '../components/EmptyState';
 import { logout } from '../api/auth';
 import { createApp, fetchAdminApps, fetchCategories as fetchAdminCategories } from '../api/admin';
 import { getErrorMessage } from '../api/client';
-import { checkPublicCategoryHealth, fetchPublicApps, fetchPublicConfig } from '../api/public';
+import { checkPublicCategoryHealth, fetchPublicApps, fetchPublicConfig, reorderPublicCategoryApps } from '../api/public';
 import Toast, { useToast } from '../components/Toast';
 import type { NavApp, NavCategory } from '../types/app';
 import type { AdminCategory } from '../types/category';
@@ -25,6 +25,11 @@ const quickAppBlank = {
   visible: true,
   openInNewTab: true,
   healthEnabled: true,
+};
+
+type DragState = {
+  categoryId: number;
+  appId: number;
 };
 
 function readCollapsedCategories() {
@@ -69,6 +74,9 @@ export default function Home() {
   const [quickAddForm, setQuickAddForm] = useState(quickAppBlank);
   const [quickAddError, setQuickAddError] = useState('');
   const [quickAddSaving, setQuickAddSaving] = useState(false);
+  const [draggingApp, setDraggingApp] = useState<DragState | null>(null);
+  const [dragOverApp, setDragOverApp] = useState<DragState | null>(null);
+  const [sortingCategoryIds, setSortingCategoryIds] = useState<Set<number>>(new Set());
   const { toast, showToast, clearToast } = useToast();
 
   useEffect(() => {
@@ -104,6 +112,8 @@ export default function Home() {
 
   const filteredCategoryIds = filtered.map((category) => String(category.id));
   const allFilteredCollapsed = filteredCategoryIds.length > 0 && filteredCategoryIds.every((id) => collapsedCategories[id]);
+  const homeQuickSortEnabled = settings.home_quick_sort_enabled === 'true';
+  const quickSortActive = homeQuickSortEnabled && keyword.trim().length === 0;
 
   async function handleLogout() {
     await logout();
@@ -223,6 +233,77 @@ export default function Home() {
     } finally {
       setQuickAddSaving(false);
     }
+  }
+
+  function handleAppDragStart(category: NavCategory, event: DragEvent<HTMLDivElement>, appId: number) {
+    if (!quickSortActive || sortingCategoryIds.has(category.id)) {
+      event.preventDefault();
+      return;
+    }
+
+    setDraggingApp({ categoryId: category.id, appId });
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(appId));
+  }
+
+  function handleAppDragOver(category: NavCategory, event: DragEvent<HTMLDivElement>, appId: number) {
+    if (!quickSortActive || !draggingApp || draggingApp.categoryId !== category.id || draggingApp.appId === appId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    setDragOverApp({ categoryId: category.id, appId });
+  }
+
+  async function handleAppDrop(category: NavCategory, event: DragEvent<HTMLDivElement>, targetAppId: number) {
+    event.preventDefault();
+    const sourceAppId = Number(event.dataTransfer.getData('text/plain') || draggingApp?.appId);
+    setDraggingApp(null);
+    setDragOverApp(null);
+
+    if (!quickSortActive || sortingCategoryIds.has(category.id) || !sourceAppId || sourceAppId === targetAppId) {
+      return;
+    }
+
+    const currentCategory = categories.find((item) => item.id === category.id);
+    if (!currentCategory) {
+      return;
+    }
+
+    const sourceIndex = currentCategory.apps.findIndex((app) => app.id === sourceAppId);
+    const targetIndex = currentCategory.apps.findIndex((app) => app.id === targetAppId);
+    if (sourceIndex < 0 || targetIndex < 0) {
+      return;
+    }
+
+    const nextApps = [...currentCategory.apps];
+    const [moved] = nextApps.splice(sourceIndex, 1);
+    nextApps.splice(targetIndex, 0, moved);
+    const nextAppIds = nextApps.map((app) => app.id);
+    const previousCategories = categories;
+
+    setCategories((current) => current.map((item) => (item.id === category.id ? { ...item, apps: nextApps } : item)));
+    setSortingCategoryIds((current) => new Set(current).add(category.id));
+
+    try {
+      await reorderPublicCategoryApps(category.id, nextAppIds);
+      showToast('首页排序已保存');
+    } catch (err) {
+      setCategories(previousCategories);
+      showToast(getErrorMessage(err), 'error');
+    } finally {
+      setSortingCategoryIds((current) => {
+        const next = new Set(current);
+        next.delete(category.id);
+        return next;
+      });
+    }
+  }
+
+  function handleAppDragEnd() {
+    setDraggingApp(null);
+    setDragOverApp(null);
   }
 
   return (
@@ -357,6 +438,14 @@ export default function Home() {
               onCollapsedChange={(collapsed) => setCategoryCollapsed(category.id, collapsed)}
               onHealthCheck={() => runCategoryHealthCheck(category)}
               onAddApp={() => startQuickAdd(category)}
+              quickSortEnabled={quickSortActive}
+              sortingAppId={draggingApp?.categoryId === category.id ? draggingApp.appId : null}
+              dragOverAppId={dragOverApp?.categoryId === category.id ? dragOverApp.appId : null}
+              sortSaving={sortingCategoryIds.has(category.id)}
+              onAppDragStart={(event, appId) => handleAppDragStart(category, event, appId)}
+              onAppDragOver={(event, appId) => handleAppDragOver(category, event, appId)}
+              onAppDrop={(event, appId) => handleAppDrop(category, event, appId)}
+              onAppDragEnd={handleAppDragEnd}
             />
           ))
         ) : (

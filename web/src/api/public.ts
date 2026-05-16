@@ -16,3 +16,8 @@ export async function checkPublicCategoryHealth(categoryId: number) {
   const { data } = await client.post<NavApp[]>(`/public/categories/${categoryId}/health-check`);
   return data;
 }
+
+export async function reorderPublicCategoryApps(categoryId: number, appIds: number[]) {
+  const { data } = await client.post<{ success: boolean }>(`/public/categories/${categoryId}/reorder-apps`, { appIds });
+  return data;
+}

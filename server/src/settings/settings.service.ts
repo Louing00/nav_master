@@ -16,7 +16,16 @@ export class SettingsService {
 
   async update(userId: number, settings: Record<string, string>) {
     const entries = Object.entries(settings).filter(([key]) =>
-      ['site_title', 'site_subtitle', 'logo', 'theme', 'footer_text', 'health_auto_check_enabled', 'health_auto_check_interval_minutes'].includes(key),
+      [
+        'site_title',
+        'site_subtitle',
+        'logo',
+        'theme',
+        'footer_text',
+        'home_quick_sort_enabled',
+        'health_auto_check_enabled',
+        'health_auto_check_interval_minutes',
+      ].includes(key),
     );
 
     await Promise.all(
@@ -33,7 +42,7 @@ export class SettingsService {
   }
 
   private normalize(key: string, value: unknown) {
-    if (key === 'health_auto_check_enabled') {
+    if (key === 'health_auto_check_enabled' || key === 'home_quick_sort_enabled') {
       return value === true || value === 'true' ? 'true' : 'false';
     }
 

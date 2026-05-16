@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { AppIconService } from '../apps/app-icon.service';
 import { HealthCheckService } from '../apps/health-check.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -127,6 +127,53 @@ export class PublicService {
     }
 
     return checked.map(serializeApp);
+  }
+
+  async reorderApps(userId: number, categoryId: number, appIds: number[]) {
+    await this.prisma.ensureUserWorkspace(userId);
+    const settings = await this.config(userId);
+    if (settings.home_quick_sort_enabled !== 'true') {
+      throw new ForbiddenException('首页快捷排序未开启');
+    }
+
+    if (!Array.isArray(appIds) || appIds.length === 0 || appIds.some((id) => !Number.isInteger(id) || id <= 0)) {
+      throw new BadRequestException('排序数据无效');
+    }
+
+    if (categoryId !== 0) {
+      const category = await this.prisma.category.findFirst({
+        where: { id: categoryId, userId, visible: true },
+        select: { id: true },
+      });
+      if (!category) {
+        throw new BadRequestException('分类不存在或不可排序');
+      }
+    }
+
+    const categoryWhere = categoryId === 0 ? null : categoryId;
+    const apps = await this.prisma.app.findMany({
+      where: { userId, visible: true, categoryId: categoryWhere },
+      select: { id: true },
+      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+    });
+    const existingIds = apps.map((app) => app.id);
+    const existingIdSet = new Set(existingIds);
+    const uniqueAppIds = [...new Set(appIds)];
+
+    if (uniqueAppIds.length !== appIds.length || uniqueAppIds.length !== existingIds.length || uniqueAppIds.some((id) => !existingIdSet.has(id))) {
+      throw new BadRequestException('排序数据与当前分类不匹配');
+    }
+
+    await this.prisma.$transaction(
+      uniqueAppIds.map((id, index) =>
+        this.prisma.app.updateMany({
+          where: { id, userId, categoryId: categoryWhere },
+          data: { sortOrder: (index + 1) * 10 },
+        }),
+      ),
+    );
+
+    return { success: true };
   }
 
   private async ensureIconCache(

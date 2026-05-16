@@ -7,6 +7,7 @@ export default function AdminSettings() {
   const [settings, setSettings] = useState<SiteSettings>({});
   const [saved, setSaved] = useState(false);
   const autoHealthEnabled = settings.health_auto_check_enabled !== 'false';
+  const homeQuickSortEnabled = settings.home_quick_sort_enabled === 'true';
 
   useEffect(() => {
     fetchSettings().then(setSettings);
@@ -45,6 +46,27 @@ export default function AdminSettings() {
           <span className="admin-label">页脚文本</span>
           <input className="admin-input mt-1" value={settings.footer_text || ''} onChange={(event) => setSettings({ ...settings, footer_text: event.target.value })} />
         </label>
+        <div className="rounded-lg border border-black/10 bg-[#f6f3ec]/70 p-4 dark:border-white/10 dark:bg-slate-950/50">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-semibold">首页快捷排序</h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">开启后可在首页同一分类内拖动卡片调整入口顺序。</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSettings({ ...settings, home_quick_sort_enabled: homeQuickSortEnabled ? 'false' : 'true' })}
+              className={`focus-ring inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition ${
+                homeQuickSortEnabled ? 'bg-mint' : 'bg-slate-300 dark:bg-slate-700'
+              }`}
+              title={homeQuickSortEnabled ? '关闭首页快捷排序' : '开启首页快捷排序'}
+              data-tooltip={homeQuickSortEnabled ? '关闭首页快捷排序' : '开启首页快捷排序'}
+              aria-pressed={homeQuickSortEnabled}
+            >
+              <span className="sr-only">{homeQuickSortEnabled ? '已开启' : '已关闭'}</span>
+              <span className={`h-6 w-6 rounded-full bg-white shadow transition ${homeQuickSortEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        </div>
         <div className="rounded-lg border border-black/10 bg-[#f6f3ec]/70 p-4 dark:border-white/10 dark:bg-slate-950/50">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>

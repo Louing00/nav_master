@@ -6,16 +6,19 @@ import type { NavApp } from '../types/app';
 type Props = {
   app: NavApp;
   compact?: boolean;
+  sortMode?: boolean;
 };
 
-export default function AppCard({ app, compact = false }: Props) {
+export default function AppCard({ app, compact = false, sortMode = false }: Props) {
+  const sortClassName = sortMode ? 'cursor-grab active:cursor-grabbing' : '';
+
   if (compact) {
     return (
       <a
         href={app.url}
         target={app.openInNewTab ? '_blank' : '_self'}
         rel="noreferrer"
-        className="surface focus-ring group flex min-h-14 items-center gap-3 overflow-hidden rounded-lg px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-mint/30 hover:bg-white hover:shadow-[0_8px_24px_rgba(15,23,42,0.08)] dark:hover:bg-slate-900"
+        className={`surface focus-ring group flex min-h-14 items-center gap-3 overflow-hidden rounded-lg px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-mint/30 hover:bg-white hover:shadow-[0_8px_24px_rgba(15,23,42,0.08)] dark:hover:bg-slate-900 ${sortClassName}`}
         title="打开系统"
       >
         <AppIcon app={app} compact />
@@ -26,7 +29,7 @@ export default function AppCard({ app, compact = false }: Props) {
   }
 
   return (
-    <article className="surface group h-full overflow-hidden rounded-lg shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-mint/30 hover:bg-white hover:shadow-[0_12px_36px_rgba(15,23,42,0.08)] dark:hover:bg-slate-900/90">
+    <article className={`surface group h-full overflow-hidden rounded-lg shadow-[0_1px_2px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-mint/30 hover:bg-white hover:shadow-[0_12px_36px_rgba(15,23,42,0.08)] dark:hover:bg-slate-900/90 ${sortClassName}`}>
       <a
         href={app.url}
         target={app.openInNewTab ? '_blank' : '_self'}

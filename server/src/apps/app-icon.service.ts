@@ -22,6 +22,10 @@ const ICON_PATHS = [
   '/logo.png',
 ];
 
+const KNOWN_ICON_CANDIDATES: Record<string, string[]> = {
+  'chat.deepseek.com': ['https://fe-static.deepseek.com/chat/favicon.svg', 'https://cdn.deepseek.com/chat/icon.png'],
+};
+
 function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = 3500) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -96,9 +100,19 @@ export class AppIconService {
   }
 
   private async collectCandidates(url: string) {
+    const knownCandidates = this.knownCandidates(url);
     const originCandidates = this.commonCandidates(url);
     const linkedCandidates = await this.linkedCandidates(url);
-    return unique([...linkedCandidates, ...originCandidates]);
+    return unique([...linkedCandidates, ...knownCandidates, ...originCandidates]);
+  }
+
+  private knownCandidates(url: string) {
+    try {
+      const hostname = new URL(url).hostname.toLowerCase();
+      return KNOWN_ICON_CANDIDATES[hostname] || [];
+    } catch {
+      return [];
+    }
   }
 
   private commonCandidates(url: string) {
