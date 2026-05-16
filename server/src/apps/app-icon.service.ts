@@ -24,6 +24,7 @@ const ICON_PATHS = [
 
 const KNOWN_ICON_CANDIDATES: Record<string, string[]> = {
   'chat.deepseek.com': ['https://fe-static.deepseek.com/chat/favicon.svg', 'https://cdn.deepseek.com/chat/icon.png'],
+  'mail.google.com': ['https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico', 'https://mail.google.com/favicon.ico'],
 };
 
 function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = 3500) {
