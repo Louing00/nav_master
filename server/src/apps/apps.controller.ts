@@ -41,6 +41,11 @@ export class AppsController {
     return this.appsService.refreshIcon(request.user.id, id);
   }
 
+  @Post(':id/cache-browser-icon')
+  cacheBrowserIcon(@Req() request: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body('resolvedIconUrl') resolvedIconUrl: string) {
+    return this.appsService.cacheBrowserResolvedIcon(request.user.id, id, resolvedIconUrl);
+  }
+
   @Put(':id')
   update(@Req() request: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAppDto) {
     return this.appsService.update(request.user.id, id, dto);

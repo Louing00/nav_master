@@ -26,6 +26,7 @@ function serializeApp(app: any) {
     url: app.url,
     description: app.description,
     icon: app.icon,
+    iconUrl: app.iconUrl,
     resolvedIconUrl: app.resolvedIconUrl,
     iconResolvedAt: app.iconResolvedAt,
     tags: parseTags(app.tags),
@@ -172,6 +173,33 @@ export class PublicService {
         }),
       ),
     );
+
+    return { success: true };
+  }
+
+  async cacheBrowserResolvedIcon(userId: number, id: number, resolvedIconUrl: string) {
+    await this.prisma.ensureUserWorkspace(userId);
+    const settings = await this.config(userId);
+    if (settings.icon_resolve_mode === 'server_only') {
+      throw new ForbiddenException('当前模式不允许浏览器写入图标缓存');
+    }
+
+    const app = await this.prisma.app.findFirst({ where: { id, userId }, select: { id: true, url: true } });
+    if (!app) {
+      throw new BadRequestException('应用不存在');
+    }
+
+    if (!this.appIconService.isBrowserCandidate(app.url, resolvedIconUrl)) {
+      throw new BadRequestException('图标地址不在允许的浏览器候选范围内');
+    }
+
+    await this.prisma.app.update({
+      where: { id },
+      data: {
+        resolvedIconUrl,
+        iconResolvedAt: new Date(),
+      },
+    });
 
     return { success: true };
   }

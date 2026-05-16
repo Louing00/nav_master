@@ -41,6 +41,7 @@ model App {
   url           String
   description   String?
   icon          String?
+  iconUrl       String?
   resolvedIconUrl String?
   iconResolvedAt DateTime?
   categoryId    Int?

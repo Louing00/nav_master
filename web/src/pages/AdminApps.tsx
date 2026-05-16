@@ -14,6 +14,7 @@ const blank = {
   url: '',
   description: '',
   icon: '',
+  iconUrl: '',
   categoryId: undefined as number | undefined,
   tags: '',
   sortOrder: 0,
@@ -126,6 +127,7 @@ export default function AdminApps() {
       url: app.url,
       description: app.description || '',
       icon: app.icon || '',
+      iconUrl: app.iconUrl || '',
       categoryId: app.categoryId || undefined,
       tags: app.tags.join(', '),
       sortOrder: app.sortOrder || 0,
@@ -151,6 +153,7 @@ export default function AdminApps() {
     const categoryChanged = editing ? (editing.categoryId || undefined) !== categoryId : false;
     const payload = {
       ...form,
+      iconUrl: form.iconUrl.trim() || undefined,
       categoryId,
       tags: form.tags
         .split(',')
@@ -632,8 +635,17 @@ export default function AdminApps() {
                 <textarea className="admin-input mt-1 min-h-20" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
               </label>
               <label>
-                <span className="admin-label">图标</span>
+                <span className="admin-label">图标字符</span>
                 <input className="admin-input mt-1" value={form.icon} onChange={(event) => setForm({ ...form, icon: event.target.value })} />
+              </label>
+              <label>
+                <span className="admin-label">图标 URL</span>
+                <input
+                  className="admin-input mt-1"
+                  value={form.iconUrl}
+                  onChange={(event) => setForm({ ...form, iconUrl: event.target.value })}
+                  placeholder="https://example.com/icon.png"
+                />
               </label>
               <label>
                 <span className="admin-label">分类</span>

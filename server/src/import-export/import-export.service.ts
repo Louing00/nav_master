@@ -15,6 +15,7 @@ type ImportApp = {
   url?: string;
   description?: string | null;
   icon?: string | null;
+  iconUrl?: string | null;
   categoryId?: number | null;
   categoryName?: string;
   tags?: string[] | string | null;
@@ -152,6 +153,7 @@ export class ImportExportService {
           name: app.name,
           description: app.description,
           icon: app.icon,
+          iconUrl: app.iconUrl,
           categoryId: categoryId || null,
           tags: parseTags(app.tags),
           sortOrder: app.sortOrder || 0,
@@ -164,6 +166,7 @@ export class ImportExportService {
           url: app.url,
           description: app.description,
           icon: app.icon,
+          iconUrl: app.iconUrl,
           categoryId: categoryId || null,
           tags: parseTags(app.tags),
           sortOrder: app.sortOrder || 0,

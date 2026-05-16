@@ -1,5 +1,5 @@
 import { LayoutGrid, LogOut, Menu, Moon, Save, Search, Shield, Sun, X } from 'lucide-react';
-import { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminModal from '../components/AdminModal';
 import CategorySection from '../components/CategorySection';
@@ -7,8 +7,9 @@ import EmptyState from '../components/EmptyState';
 import { logout } from '../api/auth';
 import { createApp, fetchAdminApps, fetchCategories as fetchAdminCategories } from '../api/admin';
 import { getErrorMessage } from '../api/client';
-import { checkPublicCategoryHealth, fetchPublicApps, fetchPublicConfig, reorderPublicCategoryApps } from '../api/public';
+import { cachePublicAppBrowserIcon, checkPublicCategoryHealth, fetchPublicApps, fetchPublicConfig, reorderPublicCategoryApps } from '../api/public';
 import Toast, { useToast } from '../components/Toast';
+import { resolveBrowserIcon } from '../lib/browserIcon';
 import type { NavApp, NavCategory } from '../types/app';
 import type { AdminCategory } from '../types/category';
 import type { SiteSettings } from '../types/setting';
@@ -19,6 +20,7 @@ const quickAppBlank = {
   url: '',
   description: '',
   icon: '',
+  iconUrl: '',
   categoryId: undefined as number | undefined,
   tags: '',
   sortOrder: 0,
@@ -61,6 +63,7 @@ function formatHealthSummary(categoryName: string, checkedApps: NavApp[]) {
 
 export default function Home() {
   const navigate = useNavigate();
+  const browserIconAttemptRef = useRef(new Map<number, string>());
   const [settings, setSettings] = useState<SiteSettings>({});
   const [categories, setCategories] = useState<NavCategory[]>([]);
   const [keyword, setKeyword] = useState('');
@@ -114,6 +117,71 @@ export default function Home() {
   const allFilteredCollapsed = filteredCategoryIds.length > 0 && filteredCategoryIds.every((id) => collapsedCategories[id]);
   const homeQuickSortEnabled = settings.home_quick_sort_enabled === 'true';
   const quickSortActive = homeQuickSortEnabled && keyword.trim().length === 0;
+  const iconResolveMode = settings.icon_resolve_mode || 'auto';
+
+  useEffect(() => {
+    if (iconResolveMode === 'server_only') {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      for (const app of categories.flatMap((category) => category.apps)) {
+        if (cancelled) {
+          return;
+        }
+
+        if (app.iconUrl?.trim()) {
+          continue;
+        }
+
+        if (iconResolveMode === 'auto' && app.resolvedIconUrl?.trim()) {
+          continue;
+        }
+
+        const signature = `${iconResolveMode}:${app.url}`;
+        if (browserIconAttemptRef.current.get(app.id) === signature) {
+          continue;
+        }
+        browserIconAttemptRef.current.set(app.id, signature);
+
+        const resolvedIconUrl = await resolveBrowserIcon(app.url);
+        if (!resolvedIconUrl || cancelled) {
+          continue;
+        }
+
+        if (resolvedIconUrl === app.resolvedIconUrl) {
+          continue;
+        }
+
+        setCategories((current) =>
+          current.map((category) => ({
+            ...category,
+            apps: category.apps.map((item) =>
+              item.id === app.id
+                ? {
+                    ...item,
+                    resolvedIconUrl,
+                    iconResolvedAt: new Date().toISOString(),
+                  }
+                : item,
+            ),
+          })),
+        );
+
+        try {
+          await cachePublicAppBrowserIcon(app.id, resolvedIconUrl);
+        } catch {
+          // Browser-side icon write-back is best-effort.
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [categories, iconResolveMode]);
 
   async function handleLogout() {
     await logout();
@@ -215,6 +283,7 @@ export default function Home() {
     const categoryId = quickAddForm.categoryId ? Number(quickAddForm.categoryId) : undefined;
     const payload = {
       ...quickAddForm,
+      iconUrl: quickAddForm.iconUrl.trim() || undefined,
       categoryId,
       tags: quickAddForm.tags
         .split(',')
@@ -497,8 +566,17 @@ export default function Home() {
                 <textarea className="admin-input mt-1 min-h-20" value={quickAddForm.description} onChange={(event) => setQuickAddForm({ ...quickAddForm, description: event.target.value })} />
               </label>
               <label>
-                <span className="admin-label">图标</span>
+                <span className="admin-label">图标字符</span>
                 <input className="admin-input mt-1" value={quickAddForm.icon} onChange={(event) => setQuickAddForm({ ...quickAddForm, icon: event.target.value })} />
+              </label>
+              <label>
+                <span className="admin-label">图标 URL</span>
+                <input
+                  className="admin-input mt-1"
+                  value={quickAddForm.iconUrl}
+                  onChange={(event) => setQuickAddForm({ ...quickAddForm, iconUrl: event.target.value })}
+                  placeholder="https://example.com/icon.png"
+                />
               </label>
               <label>
                 <span className="admin-label">分类</span>

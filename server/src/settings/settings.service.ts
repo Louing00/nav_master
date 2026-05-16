@@ -22,6 +22,7 @@ export class SettingsService {
         'logo',
         'theme',
         'footer_text',
+        'icon_resolve_mode',
         'home_quick_sort_enabled',
         'health_auto_check_enabled',
         'health_auto_check_interval_minutes',
@@ -44,6 +45,10 @@ export class SettingsService {
   private normalize(key: string, value: unknown) {
     if (key === 'health_auto_check_enabled' || key === 'home_quick_sort_enabled') {
       return value === true || value === 'true' ? 'true' : 'false';
+    }
+
+    if (key === 'icon_resolve_mode') {
+      return ['auto', 'server_only', 'browser_first'].includes(String(value)) ? String(value) : 'auto';
     }
 
     if (key === 'health_auto_check_interval_minutes') {

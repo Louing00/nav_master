@@ -116,6 +116,23 @@ export class AppsService {
     return serialize(app);
   }
 
+  async cacheBrowserResolvedIcon(userId: number, id: number, resolvedIconUrl: string) {
+    const existing = await this.ensureExists(userId, id);
+    if (!this.appIconService.isBrowserCandidate(existing.url, resolvedIconUrl)) {
+      throw new BadRequestException('图标地址不在允许的浏览器候选范围内');
+    }
+
+    const app = await this.prisma.app.update({
+      where: { id },
+      data: {
+        resolvedIconUrl,
+        iconResolvedAt: new Date(),
+      },
+      include: { category: true },
+    });
+    return serialize(app);
+  }
+
   async remove(userId: number, id: number) {
     await this.ensureExists(userId, id);
     await this.prisma.app.delete({ where: { id } });

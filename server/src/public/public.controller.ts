@@ -29,4 +29,9 @@ export class PublicController {
   reorderApps(@Req() request: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body('appIds') appIds: number[]) {
     return this.publicService.reorderApps(request.user.id, id, appIds);
   }
+
+  @Post('apps/:id/cache-browser-icon')
+  cacheBrowserIcon(@Req() request: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body('resolvedIconUrl') resolvedIconUrl: string) {
+    return this.publicService.cacheBrowserResolvedIcon(request.user.id, id, resolvedIconUrl);
+  }
 }

@@ -100,11 +100,18 @@ export class AppIconService {
     return null;
   }
 
+  getBrowserCandidates(url: string) {
+    return unique([...this.knownCandidates(url), ...this.commonCandidates(url)]);
+  }
+
+  isBrowserCandidate(url: string, candidate: string) {
+    return this.getBrowserCandidates(url).includes(candidate);
+  }
+
   private async collectCandidates(url: string) {
-    const knownCandidates = this.knownCandidates(url);
-    const originCandidates = this.commonCandidates(url);
+    const browserCandidates = this.getBrowserCandidates(url);
     const linkedCandidates = await this.linkedCandidates(url);
-    return unique([...linkedCandidates, ...knownCandidates, ...originCandidates]);
+    return unique([...linkedCandidates, ...browserCandidates]);
   }
 
   private knownCandidates(url: string) {

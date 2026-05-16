@@ -19,6 +19,11 @@ export class CreateAppDto {
   icon?: string;
 
   @IsOptional()
+  @IsUrl({ require_protocol: true, protocols: ['http', 'https'] })
+  @MaxLength(500)
+  iconUrl?: string;
+
+  @IsOptional()
   @IsInt()
   categoryId?: number;
 

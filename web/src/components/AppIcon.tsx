@@ -2,18 +2,25 @@ import { useEffect, useMemo, useState } from 'react';
 import type { NavApp } from '../types/app';
 
 type Props = {
-  app: Pick<NavApp, 'icon' | 'name' | 'resolvedIconUrl'>;
+  app: Pick<NavApp, 'icon' | 'iconUrl' | 'name' | 'resolvedIconUrl'>;
   compact?: boolean;
 };
 
 const DEFAULT_ICON = '⌁';
 
 export default function AppIcon({ app, compact = false }: Props) {
+  const [manualIconFailed, setManualIconFailed] = useState(false);
   const [remoteIconFailed, setRemoteIconFailed] = useState(false);
   const rawIcon = app.icon?.trim();
   const textIcon = rawIcon && rawIcon !== DEFAULT_ICON ? rawIcon : '';
+  const manualIconUrl = useMemo(() => app.iconUrl?.trim() || '', [app.iconUrl]);
   const remoteIconUrl = useMemo(() => app.resolvedIconUrl?.trim() || '', [app.resolvedIconUrl]);
+  const showManualIcon = Boolean(manualIconUrl && !manualIconFailed);
   const showRemoteIcon = Boolean(remoteIconUrl && !remoteIconFailed);
+
+  useEffect(() => {
+    setManualIconFailed(false);
+  }, [manualIconUrl]);
 
   useEffect(() => {
     setRemoteIconFailed(false);
@@ -26,7 +33,14 @@ export default function AppIcon({ app, compact = false }: Props) {
       }`}
       aria-hidden="true"
     >
-      {showRemoteIcon ? (
+      {showManualIcon ? (
+        <img
+          src={manualIconUrl}
+          alt=""
+          className={compact ? 'h-5 w-5 object-contain' : 'h-6 w-6 object-contain sm:h-7 sm:w-7'}
+          onError={() => setManualIconFailed(true)}
+        />
+      ) : showRemoteIcon ? (
         <img
           src={remoteIconUrl}
           alt=""

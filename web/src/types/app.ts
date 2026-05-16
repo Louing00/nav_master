@@ -4,6 +4,7 @@ export type NavApp = {
   url: string;
   description?: string | null;
   icon?: string | null;
+  iconUrl?: string | null;
   resolvedIconUrl?: string | null;
   iconResolvedAt?: string | null;
   tags: string[];
