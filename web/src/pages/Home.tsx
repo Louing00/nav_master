@@ -283,7 +283,7 @@ export default function Home() {
     const categoryId = quickAddForm.categoryId ? Number(quickAddForm.categoryId) : undefined;
     const payload = {
       ...quickAddForm,
-      iconUrl: quickAddForm.iconUrl.trim() || undefined,
+      iconUrl: quickAddForm.iconUrl.trim() || null,
       categoryId,
       tags: quickAddForm.tags
         .split(',')

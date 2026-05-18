@@ -206,7 +206,7 @@ export class PublicService {
 
   private async ensureIconCache(
     userId: number,
-    apps: Array<{ id: number; url: string; resolvedIconUrl?: string | null; iconResolvedAt?: Date | null }>,
+    apps: Array<{ id: number; url: string; iconUrl?: string | null; resolvedIconUrl?: string | null; iconResolvedAt?: Date | null }>,
   ) {
     const tasks = apps.filter((app) => this.shouldResolveIcon(app)).map((app) => this.resolveAndCacheIcon(userId, app));
     await Promise.race([Promise.allSettled(tasks), new Promise((resolve) => setTimeout(resolve, ICON_CACHE_RESPONSE_BUDGET_MS))]);
@@ -214,13 +214,18 @@ export class PublicService {
 
   private async resolveAndCacheIcon(
     userId: number,
-    app: { id: number; url: string; resolvedIconUrl?: string | null; iconResolvedAt?: Date | null },
+    app: { id: number; url: string; iconUrl?: string | null; resolvedIconUrl?: string | null; iconResolvedAt?: Date | null },
   ) {
     try {
       const resolvedIconUrl = await this.appIconService.resolve(app.url);
       const iconResolvedAt = new Date();
       await this.prisma.app.updateMany({
-        where: { id: app.id, userId },
+        where: {
+          id: app.id,
+          userId,
+          url: app.url,
+          OR: [{ iconUrl: null }, { iconUrl: '' }],
+        },
         data: {
           resolvedIconUrl,
           iconResolvedAt,
@@ -233,7 +238,11 @@ export class PublicService {
     }
   }
 
-  private shouldResolveIcon(app: { resolvedIconUrl?: string | null; iconResolvedAt?: Date | null }) {
+  private shouldResolveIcon(app: { iconUrl?: string | null; resolvedIconUrl?: string | null; iconResolvedAt?: Date | null }) {
+    if (app.iconUrl) {
+      return false;
+    }
+
     if (app.resolvedIconUrl) {
       return false;
     }

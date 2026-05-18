@@ -153,7 +153,7 @@ export default function AdminApps() {
     const categoryChanged = editing ? (editing.categoryId || undefined) !== categoryId : false;
     const payload = {
       ...form,
-      iconUrl: form.iconUrl.trim() || undefined,
+      iconUrl: form.iconUrl.trim() || null,
       categoryId,
       tags: form.tags
         .split(',')

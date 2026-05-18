@@ -61,16 +61,15 @@ export class AppsService {
 
   async create(userId: number, dto: CreateAppDto) {
     await this.ensureCategoryBelongsToUser(userId, dto.categoryId);
-    const iconCache = await this.resolveIconCache(dto.url);
     const app = await this.prisma.app.create({
       data: {
         ...dto,
         tags: JSON.stringify(dto.tags || []),
         userId,
-        ...iconCache,
       },
       include: { category: true },
     });
+    this.queueIconResolve(userId, app.id, app.url, app.iconUrl);
     return serialize(app);
   }
 
@@ -78,15 +77,16 @@ export class AppsService {
     const existing = await this.ensureExists(userId, id);
     await this.ensureCategoryBelongsToUser(userId, dto.categoryId);
     const urlChanged = dto.url !== undefined && dto.url !== existing.url;
-    const shouldResolveIcon = urlChanged || !existing.resolvedIconUrl;
-    const iconCache = shouldResolveIcon ? await this.resolveIconCache(dto.url || existing.url) : {};
+    const targetUrl = dto.url || existing.url;
+    const targetIconUrl = dto.iconUrl === undefined ? existing.iconUrl : dto.iconUrl;
     const healthDisabled = dto.healthEnabled === false;
     const app = await this.prisma.app.update({
       where: { id },
       data: {
         ...dto,
         tags: dto.tags === undefined ? undefined : JSON.stringify(dto.tags),
-        ...iconCache,
+        resolvedIconUrl: urlChanged ? null : undefined,
+        iconResolvedAt: urlChanged ? null : undefined,
         healthStatus: healthDisabled || urlChanged ? 'unknown' : undefined,
         healthCheckedAt: healthDisabled || urlChanged ? null : undefined,
         healthLatencyMs: healthDisabled || urlChanged ? null : undefined,
@@ -94,6 +94,9 @@ export class AppsService {
       },
       include: { category: true },
     });
+    if (!targetIconUrl && (urlChanged || !existing.resolvedIconUrl)) {
+      this.queueIconResolve(userId, app.id, targetUrl, targetIconUrl);
+    }
     return serialize(app);
   }
 
@@ -163,5 +166,30 @@ export class AppsService {
       resolvedIconUrl: await this.appIconService.resolve(url),
       iconResolvedAt: new Date(),
     };
+  }
+
+  private queueIconResolve(userId: number, id: number, url: string, iconUrl?: string | null) {
+    if (iconUrl) {
+      return;
+    }
+
+    void this.resolveAndCacheIcon(userId, id, url);
+  }
+
+  private async resolveAndCacheIcon(userId: number, id: number, url: string) {
+    try {
+      const iconCache = await this.resolveIconCache(url);
+      await this.prisma.app.updateMany({
+        where: {
+          id,
+          userId,
+          url,
+          OR: [{ iconUrl: null }, { iconUrl: '' }],
+        },
+        data: iconCache,
+      });
+    } catch {
+      // Icon cache refresh is best-effort; creating or updating an app should stay fast.
+    }
   }
 }

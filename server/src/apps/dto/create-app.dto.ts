@@ -21,7 +21,7 @@ export class CreateAppDto {
   @IsOptional()
   @IsUrl({ require_protocol: true, protocols: ['http', 'https'] })
   @MaxLength(500)
-  iconUrl?: string;
+  iconUrl?: string | null;
 
   @IsOptional()
   @IsInt()
