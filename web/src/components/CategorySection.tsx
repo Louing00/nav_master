@@ -37,7 +37,7 @@ export default function CategorySection({
   onAppDragEnd,
 }: Props) {
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+    <section id={`category-${category.id}`} className="mx-auto w-full max-w-7xl scroll-mt-4 px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
       <div className="mb-3 flex items-center justify-between gap-4 sm:mb-4">
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-3">

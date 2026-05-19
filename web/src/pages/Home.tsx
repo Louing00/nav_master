@@ -80,6 +80,7 @@ export default function Home() {
   const [draggingApp, setDraggingApp] = useState<DragState | null>(null);
   const [dragOverApp, setDragOverApp] = useState<DragState | null>(null);
   const [sortingCategoryIds, setSortingCategoryIds] = useState<Set<number>>(new Set());
+  const [activeShortcutCategoryId, setActiveShortcutCategoryId] = useState<number | null>(null);
   const { toast, showToast, clearToast } = useToast();
 
   useEffect(() => {
@@ -375,6 +376,16 @@ export default function Home() {
     setDragOverApp(null);
   }
 
+  function scrollToCategory(categoryId: number) {
+    const target = document.getElementById(`category-${categoryId}`);
+    if (!target) {
+      return;
+    }
+
+    setActiveShortcutCategoryId(categoryId);
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   return (
     <main className="min-h-screen bg-[#f6f3ec] text-ink dark:bg-slate-950 dark:text-slate-100">
       <header className="border-b border-black/10 bg-[#f6f3ec]/88 backdrop-blur dark:border-white/10 dark:bg-slate-950/90">
@@ -493,6 +504,40 @@ export default function Home() {
               className="w-full bg-transparent text-base outline-none placeholder:text-slate-400"
             />
           </label>
+          {filtered.length > 0 && (
+            <nav aria-label="分类快捷定位" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+              <div className="flex min-w-max gap-2 sm:min-w-0 sm:flex-wrap">
+                {filtered.map((category) => {
+                  const active = activeShortcutCategoryId === category.id;
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => scrollToCategory(category.id)}
+                      className={`focus-ring inline-flex h-9 shrink-0 items-center gap-2 rounded-md border px-3 text-sm font-semibold transition ${
+                        active
+                          ? 'border-mint bg-mint text-white shadow-sm'
+                          : 'border-slate-200 bg-white/45 text-slate-600 hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-white/5 dark:text-slate-300'
+                      }`}
+                      title={`定位到${category.name}`}
+                      data-tooltip={`定位到${category.name}`}
+                      aria-current={active ? 'true' : undefined}
+                    >
+                      <span className="text-base leading-none">{category.icon || '·'}</span>
+                      <span className="max-w-28 truncate sm:max-w-40">{category.name}</span>
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 text-xs ${
+                          active ? 'bg-white/20 text-white' : 'bg-slate-900/5 text-slate-500 dark:bg-white/10 dark:text-slate-400'
+                        }`}
+                      >
+                        {category.apps.length}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          )}
         </div>
       </header>
 
