@@ -1,4 +1,4 @@
-import { LayoutGrid, LogOut, Menu, Moon, Save, Search, Shield, Sun, X } from 'lucide-react';
+import { ArrowUp, LayoutGrid, LogOut, Menu, Moon, Save, Search, Shield, Sun, X } from 'lucide-react';
 import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminModal from '../components/AdminModal';
@@ -81,6 +81,7 @@ export default function Home() {
   const [dragOverApp, setDragOverApp] = useState<DragState | null>(null);
   const [sortingCategoryIds, setSortingCategoryIds] = useState<Set<number>>(new Set());
   const [activeShortcutCategoryId, setActiveShortcutCategoryId] = useState<number | null>(null);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const { toast, showToast, clearToast } = useToast();
 
   useEffect(() => {
@@ -90,6 +91,16 @@ export default function Home() {
   useEffect(() => {
     window.localStorage.setItem(COLLAPSED_CATEGORIES_KEY, JSON.stringify(collapsedCategories));
   }, [collapsedCategories]);
+
+  useEffect(() => {
+    function updateBackToTopVisibility() {
+      setShowBackToTop(window.scrollY > 480);
+    }
+
+    updateBackToTopVisibility();
+    window.addEventListener('scroll', updateBackToTopVisibility, { passive: true });
+    return () => window.removeEventListener('scroll', updateBackToTopVisibility);
+  }, []);
 
   useEffect(() => {
     Promise.all([fetchPublicConfig(), fetchPublicApps()]).then(([config, apps]) => {
@@ -386,6 +397,11 @@ export default function Home() {
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  function scrollToTop() {
+    setActiveShortcutCategoryId(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   return (
     <main className="min-h-screen bg-[#f6f3ec] text-ink dark:bg-slate-950 dark:text-slate-100">
       <header className="border-b border-black/10 bg-[#f6f3ec]/88 backdrop-blur dark:border-white/10 dark:bg-slate-950/90">
@@ -572,6 +588,20 @@ export default function Home() {
       <footer className="mx-auto max-w-7xl px-4 py-8 text-sm text-slate-500 sm:px-6 lg:px-8 dark:text-slate-400">
         {settings.footer_text || 'Powered by AtlasGate'}
       </footer>
+      <button
+        type="button"
+        onClick={scrollToTop}
+        className={`focus-ring fixed bottom-20 right-5 z-40 inline-flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 bg-white/90 text-slate-600 shadow-lg shadow-slate-900/10 backdrop-blur transition hover:-translate-y-0.5 hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-slate-900/90 dark:text-slate-300 sm:bottom-6 ${
+          showBackToTop ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none translate-y-2 opacity-0'
+        }`}
+        title="回到顶部"
+        data-tooltip="回到顶部"
+        aria-label="回到顶部"
+        aria-hidden={!showBackToTop}
+        tabIndex={showBackToTop ? 0 : -1}
+      >
+        <ArrowUp size={20} />
+      </button>
       {quickAddOpen && (
         <form onSubmit={submitQuickAdd}>
           <AdminModal
