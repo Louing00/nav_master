@@ -1,4 +1,4 @@
-import { ArrowUp, LayoutGrid, LogOut, Menu, Moon, Save, Search, Shield, Sun, X } from 'lucide-react';
+import { ArrowUp, Command, LayoutGrid, LogOut, Menu, Moon, Save, Search, Shield, Sun, X } from 'lucide-react';
 import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminModal from '../components/AdminModal';
@@ -130,6 +130,10 @@ export default function Home() {
   const homeQuickSortEnabled = settings.home_quick_sort_enabled === 'true';
   const quickSortActive = homeQuickSortEnabled && keyword.trim().length === 0;
   const iconResolveMode = settings.icon_resolve_mode || 'auto';
+  const allApps = categories.flatMap((category) => category.apps);
+  const totalAppCount = allApps.length;
+  const healthyAppCount = allApps.filter((app) => app.healthStatus === 'healthy').length;
+  const unhealthyAppCount = allApps.filter((app) => app.healthStatus === 'unhealthy').length;
 
   useEffect(() => {
     if (iconResolveMode === 'server_only') {
@@ -404,16 +408,16 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#f6f3ec] text-ink dark:bg-slate-950 dark:text-slate-100">
-      <header className="border-b border-black/10 bg-[#f6f3ec]/88 backdrop-blur dark:border-white/10 dark:bg-slate-950/90">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-6 lg:px-8">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center text-3xl text-ink dark:text-white sm:h-12 sm:w-12 sm:text-4xl">
-                {settings.logo || '✦'}
+      <header className="px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8">
+        <div className="surface mx-auto flex w-[calc(100vw-2rem)] max-w-7xl flex-col gap-5 overflow-hidden rounded-2xl p-4 shadow-[0_12px_36px_rgba(15,23,42,0.06)] sm:w-full sm:gap-6 sm:rounded-3xl sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ink text-2xl text-white shadow-sm dark:bg-white dark:text-ink sm:h-12 sm:w-12">
+                {settings.logo ? <span className="leading-none">{settings.logo}</span> : <Command size={24} />}
               </div>
-              <div className="min-w-0">
-                <h1 className="truncate text-2xl font-semibold sm:text-3xl">{settings.site_title || 'AtlasGate 星渡枢航'}</h1>
-                <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-400 sm:line-clamp-none">
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-xl font-semibold sm:text-3xl">{settings.site_title || 'AtlasGate 星渡枢航'}</h1>
+                <p className="mt-1 truncate text-sm font-medium text-slate-600 dark:text-slate-400 sm:line-clamp-none sm:whitespace-normal">
                   {settings.site_subtitle || '个人系统、内网服务与运维入口的统一星图'}
                 </p>
               </div>
@@ -422,7 +426,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={toggleAllCategories}
-                className={`focus-ring inline-flex h-10 w-10 items-center justify-center rounded-md transition ${
+                className={`focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition ${
                   allFilteredCollapsed
                     ? 'bg-ink text-white hover:bg-mint dark:bg-white dark:text-ink'
                     : 'border border-slate-200 bg-white/40 text-slate-600 hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-white/5 dark:text-slate-300'
@@ -435,7 +439,7 @@ export default function Home() {
               </button>
               <Link
                 to="/admin"
-                className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-white/40 text-slate-600 hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-white/5 dark:text-slate-300"
+                className="focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white/40 text-slate-600 hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-white/5 dark:text-slate-300"
                 title="后台管理"
                 data-tooltip="后台管理"
               >
@@ -444,7 +448,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setDark((value) => !value)}
-                className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-md bg-mint text-white shadow-sm hover:bg-ink dark:bg-mint"
+                className="focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl bg-mint text-white shadow-sm hover:bg-ink dark:bg-mint"
                 title="切换主题"
                 data-tooltip="切换主题"
               >
@@ -453,18 +457,18 @@ export default function Home() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-white/40 text-slate-600 hover:border-red-300 hover:text-red-600 dark:border-slate-800 dark:bg-white/5 dark:text-slate-300 dark:hover:border-red-400 dark:hover:text-red-300"
+                className="focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white/40 text-slate-600 hover:border-red-300 hover:text-red-600 dark:border-slate-800 dark:bg-white/5 dark:text-slate-300 dark:hover:border-red-400 dark:hover:text-red-300"
                 title="退出登录"
                 data-tooltip="退出登录"
               >
                 <LogOut size={18} />
               </button>
             </div>
-            <div className="relative flex shrink-0 gap-2 sm:hidden">
+            <div className="relative flex w-full min-w-0 shrink-0 justify-start gap-2 sm:hidden">
               <button
                 type="button"
                 onClick={() => setDark((value) => !value)}
-                className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-md bg-mint text-white shadow-sm hover:bg-ink dark:bg-mint"
+                className="focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl bg-mint text-white shadow-sm hover:bg-ink dark:bg-mint"
                 title="切换主题"
                 data-tooltip="切换主题"
               >
@@ -473,7 +477,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen((value) => !value)}
-                className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-white/60 text-slate-600 shadow-sm hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-white/5 dark:text-slate-300"
+                className="focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white/60 text-slate-600 shadow-sm hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-white/5 dark:text-slate-300"
                 title={mobileMenuOpen ? '收起菜单' : '更多操作'}
                 data-tooltip={mobileMenuOpen ? '收起菜单' : '更多操作'}
                 aria-expanded={mobileMenuOpen}
@@ -511,15 +515,29 @@ export default function Home() {
             </div>
           </div>
 
-          <label className="surface flex items-center gap-3 rounded-lg px-3.5 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)] sm:px-4 sm:py-3">
-            <Search size={20} className="shrink-0 text-slate-500" />
-            <input
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-              placeholder="搜索系统、描述或标签"
-              className="w-full bg-transparent text-base outline-none placeholder:text-slate-400"
-            />
-          </label>
+          <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_330px]">
+            <label className="flex min-h-14 min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:border-slate-800 dark:bg-slate-950/60">
+              <Search size={22} className="shrink-0 text-slate-500" />
+              <input
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+                placeholder="搜索系统、描述或标签"
+                className="min-w-0 flex-1 bg-transparent text-base font-medium outline-none placeholder:text-slate-400"
+              />
+            </label>
+            <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
+              {[
+                ['入口', totalAppCount],
+                ['正常', healthyAppCount],
+                ['异常', unhealthyAppCount],
+              ].map(([label, value]) => (
+                <div key={label} className="min-w-0 rounded-2xl bg-slate-50/80 px-3 py-3 text-center dark:bg-slate-950/60">
+                  <div className="text-2xl font-bold leading-none text-ink dark:text-white">{value}</div>
+                  <div className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
           {filtered.length > 0 && (
             <nav aria-label="分类快捷定位" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
               <div className="flex min-w-max gap-2 sm:min-w-0 sm:flex-wrap">
@@ -530,7 +548,7 @@ export default function Home() {
                       key={category.id}
                       type="button"
                       onClick={() => scrollToCategory(category.id)}
-                      className={`focus-ring inline-flex h-9 shrink-0 items-center gap-2 rounded-md border px-3 text-sm font-semibold transition ${
+                      className={`focus-ring inline-flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-sm font-semibold transition ${
                         active
                           ? 'border-mint bg-mint text-white shadow-sm'
                           : 'border-slate-200 bg-white/45 text-slate-600 hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-white/5 dark:text-slate-300'
@@ -557,7 +575,7 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="py-4">
+      <div className="py-4 sm:py-5">
         {filtered.length ? (
           filtered.map((category) => (
             <CategorySection
