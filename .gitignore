@@ -12,3 +12,4 @@ data/*
 !data/.gitkeep
 .env
 *.log
+.scratch/
