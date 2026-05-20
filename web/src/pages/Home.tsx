@@ -1,4 +1,4 @@
-import { ArrowUp, Command, LayoutGrid, LogOut, Menu, Moon, Save, Search, Shield, Sun, X } from 'lucide-react';
+import { ArrowUp, LayoutGrid, LogOut, Menu, Moon, Save, Search, Shield, Sun, X } from 'lucide-react';
 import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminModal from '../components/AdminModal';
@@ -412,8 +412,8 @@ export default function Home() {
         <div className="surface mx-auto flex w-[calc(100vw-2rem)] max-w-7xl flex-col gap-5 overflow-hidden rounded-2xl p-4 shadow-[0_12px_36px_rgba(15,23,42,0.06)] sm:w-full sm:gap-6 sm:rounded-3xl sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ink text-2xl text-white shadow-sm dark:bg-white dark:text-ink sm:h-12 sm:w-12">
-                {settings.logo ? <span className="leading-none">{settings.logo}</span> : <Command size={24} />}
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center text-3xl text-ink dark:text-white sm:h-12 sm:w-12 sm:text-4xl">
+                {settings.logo || '✦'}
               </div>
               <div className="min-w-0 flex-1">
                 <h1 className="truncate text-xl font-semibold sm:text-3xl">{settings.site_title || 'AtlasGate 星渡枢航'}</h1>
