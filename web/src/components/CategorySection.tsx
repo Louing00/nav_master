@@ -37,7 +37,10 @@ export default function CategorySection({
   onAppDragEnd,
 }: Props) {
   return (
-    <section id={`category-${category.id}`} className="mx-auto w-full max-w-7xl scroll-mt-5 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
+    <section
+      id={`category-${category.id}`}
+      className="mx-auto w-[calc(100vw-2rem)] max-w-7xl scroll-mt-5 py-3 sm:w-[calc(100vw-3rem)] sm:py-4 lg:w-[calc(100vw-4rem)]"
+    >
       <div className="surface grid gap-4 rounded-2xl p-4 shadow-[0_8px_28px_rgba(15,23,42,0.05)] sm:rounded-3xl sm:p-5 lg:grid-cols-[220px_1fr]">
         <div className="flex min-w-0 items-start justify-between gap-4 lg:block">
           <div className="min-w-0">
@@ -83,23 +86,23 @@ export default function CategorySection({
           </div>
         </div>
         <div className={collapsed ? 'grid gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4' : 'grid gap-3 md:grid-cols-2 xl:grid-cols-3'}>
-        {category.apps.map((app) => (
-          <div
-            key={app.id}
-            className={`relative h-full rounded-lg transition ${
-              sortingAppId === app.id ? 'scale-[0.99] opacity-60' : ''
-            } ${dragOverAppId === app.id ? 'ring-2 ring-mint/50 ring-offset-2 ring-offset-[#f6f3ec] dark:ring-offset-slate-950' : ''}`}
-            draggable={quickSortEnabled && !sortSaving}
-            onDragStart={(event) => onAppDragStart?.(event, app.id)}
-            onDragEnter={(event) => onAppDragOver?.(event, app.id)}
-            onDragOver={(event) => onAppDragOver?.(event, app.id)}
-            onDrop={(event) => onAppDrop?.(event, app.id)}
-            onDragEnd={onAppDragEnd}
-            aria-grabbed={quickSortEnabled && sortingAppId === app.id}
-          >
-            <AppCard app={app} compact={collapsed} sortMode={quickSortEnabled} />
-          </div>
-        ))}
+          {category.apps.map((app) => (
+            <div
+              key={app.id}
+              className={`relative h-full rounded-lg transition ${
+                sortingAppId === app.id ? 'scale-[0.99] opacity-60' : ''
+              } ${dragOverAppId === app.id ? 'ring-2 ring-mint/50 ring-offset-2 ring-offset-[#f6f3ec] dark:ring-offset-slate-950' : ''}`}
+              draggable={quickSortEnabled && !sortSaving}
+              onDragStart={(event) => onAppDragStart?.(event, app.id)}
+              onDragEnter={(event) => onAppDragOver?.(event, app.id)}
+              onDragOver={(event) => onAppDragOver?.(event, app.id)}
+              onDrop={(event) => onAppDrop?.(event, app.id)}
+              onDragEnd={onAppDragEnd}
+              aria-grabbed={quickSortEnabled && sortingAppId === app.id}
+            >
+              <AppCard app={app} compact={collapsed} sortMode={quickSortEnabled} />
+            </div>
+          ))}
         </div>
       </div>
     </section>
