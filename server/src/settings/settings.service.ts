@@ -23,6 +23,7 @@ export class SettingsService {
         'theme',
         'footer_text',
         'icon_resolve_mode',
+        'icon_auto_resolve_on_change',
         'home_quick_sort_enabled',
         'health_auto_check_enabled',
         'health_auto_check_interval_minutes',
@@ -43,7 +44,7 @@ export class SettingsService {
   }
 
   private normalize(key: string, value: unknown) {
-    if (key === 'health_auto_check_enabled' || key === 'home_quick_sort_enabled') {
+    if (key === 'health_auto_check_enabled' || key === 'home_quick_sort_enabled' || key === 'icon_auto_resolve_on_change') {
       return value === true || value === 'true' ? 'true' : 'false';
     }
 

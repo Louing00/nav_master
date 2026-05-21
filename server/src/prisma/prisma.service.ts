@@ -9,6 +9,7 @@ const settings = {
   theme: 'auto',
   footer_text: 'Powered by AtlasGate',
   icon_resolve_mode: 'auto',
+  icon_auto_resolve_on_change: 'true',
   home_quick_sort_enabled: 'false',
   health_auto_check_enabled: 'true',
   health_auto_check_interval_minutes: '30',
@@ -129,14 +130,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   }
 
   async ensureUserWorkspace(userId: number) {
+    const existingIconMode = await this.setting.findUnique({
+      where: { userId_key: { userId, key: 'icon_resolve_mode' } },
+    });
+
     await Promise.all(
-      Object.entries(settings).map(([key, value]) =>
-        this.setting.upsert({
+      Object.entries(settings).map(([key, value]) => {
+        const defaultValue =
+          key === 'icon_auto_resolve_on_change' && existingIconMode?.value === 'server_only' ? 'false' : value;
+        return this.setting.upsert({
           where: { userId_key: { userId, key } },
           update: {},
-          create: { key, value, userId },
-        }),
-      ),
+          create: { key, value: defaultValue, userId },
+        });
+      }),
     );
 
     const categoryCount = await this.category.count({ where: { userId } });

@@ -3,9 +3,6 @@ import { AppIconService } from '../apps/app-icon.service';
 import { HealthCheckService } from '../apps/health-check.service';
 import { PrismaService } from '../prisma/prisma.service';
 
-const NEGATIVE_ICON_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
-const ICON_CACHE_RESPONSE_BUDGET_MS = 1200;
-
 function parseTags(tags?: string | null): string[] {
   if (!tags) {
     return [];
@@ -68,8 +65,6 @@ export class PublicService {
       },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
-    await this.ensureIconCache(userId, categories.flatMap((category) => category.apps));
-
     const grouped = categories
       .map((category) => ({
         id: category.id,
@@ -84,8 +79,6 @@ export class PublicService {
       where: { visible: true, categoryId: null, userId },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
-    await this.ensureIconCache(userId, uncategorized);
-
     if (uncategorized.length) {
       grouped.push({
         id: 0,
@@ -180,7 +173,7 @@ export class PublicService {
   async cacheBrowserResolvedIcon(userId: number, id: number, resolvedIconUrl: string) {
     await this.prisma.ensureUserWorkspace(userId);
     const settings = await this.config(userId);
-    if (settings.icon_resolve_mode === 'server_only') {
+    if (!this.iconAutoResolveOnChangeEnabled(settings)) {
       throw new ForbiddenException('当前模式不允许浏览器写入图标缓存');
     }
 
@@ -204,53 +197,11 @@ export class PublicService {
     return { success: true };
   }
 
-  private async ensureIconCache(
-    userId: number,
-    apps: Array<{ id: number; url: string; iconUrl?: string | null; resolvedIconUrl?: string | null; iconResolvedAt?: Date | null }>,
-  ) {
-    const tasks = apps.filter((app) => this.shouldResolveIcon(app)).map((app) => this.resolveAndCacheIcon(userId, app));
-    await Promise.race([Promise.allSettled(tasks), new Promise((resolve) => setTimeout(resolve, ICON_CACHE_RESPONSE_BUDGET_MS))]);
-  }
-
-  private async resolveAndCacheIcon(
-    userId: number,
-    app: { id: number; url: string; iconUrl?: string | null; resolvedIconUrl?: string | null; iconResolvedAt?: Date | null },
-  ) {
-    try {
-      const resolvedIconUrl = await this.appIconService.resolve(app.url);
-      const iconResolvedAt = new Date();
-      await this.prisma.app.updateMany({
-        where: {
-          id: app.id,
-          userId,
-          url: app.url,
-          OR: [{ iconUrl: null }, { iconUrl: '' }],
-        },
-        data: {
-          resolvedIconUrl,
-          iconResolvedAt,
-        },
-      });
-      app.resolvedIconUrl = resolvedIconUrl;
-      app.iconResolvedAt = iconResolvedAt;
-    } catch {
-      // Icon cache refresh is best-effort; app listing should never fail because of it.
-    }
-  }
-
-  private shouldResolveIcon(app: { iconUrl?: string | null; resolvedIconUrl?: string | null; iconResolvedAt?: Date | null }) {
-    if (app.iconUrl) {
-      return false;
+  private iconAutoResolveOnChangeEnabled(settings: Record<string, string>) {
+    if (settings.icon_auto_resolve_on_change !== undefined) {
+      return settings.icon_auto_resolve_on_change !== 'false';
     }
 
-    if (app.resolvedIconUrl) {
-      return false;
-    }
-
-    if (!app.iconResolvedAt) {
-      return true;
-    }
-
-    return Date.now() - new Date(app.iconResolvedAt).getTime() > NEGATIVE_ICON_CACHE_TTL_MS;
+    return settings.icon_resolve_mode !== 'server_only';
   }
 }

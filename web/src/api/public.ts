@@ -21,8 +21,3 @@ export async function reorderPublicCategoryApps(categoryId: number, appIds: numb
   const { data } = await client.post<{ success: boolean }>(`/public/categories/${categoryId}/reorder-apps`, { appIds });
   return data;
 }
-
-export async function cachePublicAppBrowserIcon(id: number, resolvedIconUrl: string) {
-  const { data } = await client.post<{ success: boolean }>(`/public/apps/${id}/cache-browser-icon`, { resolvedIconUrl });
-  return data;
-}

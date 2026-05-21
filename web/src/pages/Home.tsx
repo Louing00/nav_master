@@ -1,5 +1,5 @@
 import { ArrowUp, LayoutGrid, LogOut, Menu, Moon, Save, Search, Shield, Sun, X } from 'lucide-react';
-import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminModal from '../components/AdminModal';
 import CategorySection from '../components/CategorySection';
@@ -7,9 +7,8 @@ import EmptyState from '../components/EmptyState';
 import { logout } from '../api/auth';
 import { createApp, fetchAdminApps, fetchCategories as fetchAdminCategories } from '../api/admin';
 import { getErrorMessage } from '../api/client';
-import { cachePublicAppBrowserIcon, checkPublicCategoryHealth, fetchPublicApps, fetchPublicConfig, reorderPublicCategoryApps } from '../api/public';
+import { checkPublicCategoryHealth, fetchPublicApps, fetchPublicConfig, reorderPublicCategoryApps } from '../api/public';
 import Toast, { useToast } from '../components/Toast';
-import { resolveBrowserIcon } from '../lib/browserIcon';
 import type { NavApp, NavCategory } from '../types/app';
 import type { AdminCategory } from '../types/category';
 import type { SiteSettings } from '../types/setting';
@@ -63,7 +62,6 @@ function formatHealthSummary(categoryName: string, checkedApps: NavApp[]) {
 
 export default function Home() {
   const navigate = useNavigate();
-  const browserIconAttemptRef = useRef(new Map<number, string>());
   const [settings, setSettings] = useState<SiteSettings>({});
   const [categories, setCategories] = useState<NavCategory[]>([]);
   const [keyword, setKeyword] = useState('');
@@ -129,75 +127,10 @@ export default function Home() {
   const allFilteredCollapsed = filteredCategoryIds.length > 0 && filteredCategoryIds.every((id) => collapsedCategories[id]);
   const homeQuickSortEnabled = settings.home_quick_sort_enabled === 'true';
   const quickSortActive = homeQuickSortEnabled && keyword.trim().length === 0;
-  const iconResolveMode = settings.icon_resolve_mode || 'auto';
   const allApps = categories.flatMap((category) => category.apps);
   const totalAppCount = allApps.length;
   const healthyAppCount = allApps.filter((app) => app.healthStatus === 'healthy').length;
   const unhealthyAppCount = allApps.filter((app) => app.healthStatus === 'unhealthy').length;
-
-  useEffect(() => {
-    if (iconResolveMode === 'server_only') {
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      for (const app of categories.flatMap((category) => category.apps)) {
-        if (cancelled) {
-          return;
-        }
-
-        if (app.iconUrl?.trim()) {
-          continue;
-        }
-
-        if (iconResolveMode === 'auto' && app.resolvedIconUrl?.trim()) {
-          continue;
-        }
-
-        const signature = `${iconResolveMode}:${app.url}`;
-        if (browserIconAttemptRef.current.get(app.id) === signature) {
-          continue;
-        }
-        browserIconAttemptRef.current.set(app.id, signature);
-
-        const resolvedIconUrl = await resolveBrowserIcon(app.url);
-        if (!resolvedIconUrl || cancelled) {
-          continue;
-        }
-
-        if (resolvedIconUrl === app.resolvedIconUrl) {
-          continue;
-        }
-
-        setCategories((current) =>
-          current.map((category) => ({
-            ...category,
-            apps: category.apps.map((item) =>
-              item.id === app.id
-                ? {
-                    ...item,
-                    resolvedIconUrl,
-                    iconResolvedAt: new Date().toISOString(),
-                  }
-                : item,
-            ),
-          })),
-        );
-
-        try {
-          await cachePublicAppBrowserIcon(app.id, resolvedIconUrl);
-        } catch {
-          // Browser-side icon write-back is best-effort.
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [categories, iconResolveMode]);
 
   async function handleLogout() {
     await logout();

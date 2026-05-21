@@ -16,6 +16,7 @@ export default function AppIcon({ app, compact = false }: Props) {
   const manualIconUrl = useMemo(() => app.iconUrl?.trim() || '', [app.iconUrl]);
   const remoteIconUrl = useMemo(() => app.resolvedIconUrl?.trim() || '', [app.resolvedIconUrl]);
   const showManualIcon = Boolean(manualIconUrl && !manualIconFailed);
+  const showTextIcon = Boolean(textIcon);
   const showRemoteIcon = Boolean(remoteIconUrl && !remoteIconFailed);
 
   useEffect(() => {
@@ -40,6 +41,8 @@ export default function AppIcon({ app, compact = false }: Props) {
           className={compact ? 'h-5 w-5 object-contain' : 'h-6 w-6 object-contain sm:h-7 sm:w-7'}
           onError={() => setManualIconFailed(true)}
         />
+      ) : showTextIcon ? (
+        <span className="leading-none">{textIcon}</span>
       ) : showRemoteIcon ? (
         <img
           src={remoteIconUrl}
@@ -48,7 +51,7 @@ export default function AppIcon({ app, compact = false }: Props) {
           onError={() => setRemoteIconFailed(true)}
         />
       ) : (
-        <span className="leading-none">{textIcon || DEFAULT_ICON}</span>
+        <span className="leading-none">{DEFAULT_ICON}</span>
       )}
     </span>
   );

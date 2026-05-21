@@ -26,6 +26,13 @@ function serialize(app: any) {
   };
 }
 
+const DEFAULT_TEXT_ICON = '⌁';
+
+function hasManualIcon(icon?: string | null, iconUrl?: string | null) {
+  const textIcon = icon?.trim();
+  return Boolean(iconUrl?.trim() || (textIcon && textIcon !== DEFAULT_TEXT_ICON));
+}
+
 @Injectable()
 export class AppsService {
   constructor(
@@ -69,7 +76,7 @@ export class AppsService {
       },
       include: { category: true },
     });
-    this.queueIconResolve(userId, app.id, app.url, app.iconUrl);
+    this.queueIconResolve(userId, app.id, app.url, app.icon, app.iconUrl);
     return serialize(app);
   }
 
@@ -78,6 +85,7 @@ export class AppsService {
     await this.ensureCategoryBelongsToUser(userId, dto.categoryId);
     const urlChanged = dto.url !== undefined && dto.url !== existing.url;
     const targetUrl = dto.url || existing.url;
+    const targetIcon = dto.icon === undefined ? existing.icon : dto.icon;
     const targetIconUrl = dto.iconUrl === undefined ? existing.iconUrl : dto.iconUrl;
     const healthDisabled = dto.healthEnabled === false;
     const app = await this.prisma.app.update({
@@ -94,8 +102,8 @@ export class AppsService {
       },
       include: { category: true },
     });
-    if (!targetIconUrl && (urlChanged || !existing.resolvedIconUrl)) {
-      this.queueIconResolve(userId, app.id, targetUrl, targetIconUrl);
+    if (urlChanged) {
+      this.queueIconResolve(userId, app.id, targetUrl, targetIcon, targetIconUrl);
     }
     return serialize(app);
   }
@@ -168,12 +176,24 @@ export class AppsService {
     };
   }
 
-  private queueIconResolve(userId: number, id: number, url: string, iconUrl?: string | null) {
-    if (iconUrl) {
+  private queueIconResolve(userId: number, id: number, url: string, icon?: string | null, iconUrl?: string | null) {
+    if (hasManualIcon(icon, iconUrl)) {
       return;
     }
 
-    void this.resolveAndCacheIcon(userId, id, url);
+    void this.resolveAndCacheIconWhenEnabled(userId, id, url);
+  }
+
+  private async resolveAndCacheIconWhenEnabled(userId: number, id: number, url: string) {
+    try {
+      if (!(await this.iconAutoResolveOnChangeEnabled(userId))) {
+        return;
+      }
+
+      await this.resolveAndCacheIcon(userId, id, url);
+    } catch {
+      // Icon cache refresh is best-effort; creating or updating an app should stay fast.
+    }
   }
 
   private async resolveAndCacheIcon(userId: number, id: number, url: string) {
@@ -184,6 +204,7 @@ export class AppsService {
           id,
           userId,
           url,
+          AND: [{ OR: [{ icon: null }, { icon: '' }, { icon: DEFAULT_TEXT_ICON }] }],
           OR: [{ iconUrl: null }, { iconUrl: '' }],
         },
         data: iconCache,
@@ -191,5 +212,21 @@ export class AppsService {
     } catch {
       // Icon cache refresh is best-effort; creating or updating an app should stay fast.
     }
+  }
+
+  private async iconAutoResolveOnChangeEnabled(userId: number) {
+    const rows = await this.prisma.setting.findMany({
+      where: { userId, key: { in: ['icon_auto_resolve_on_change', 'icon_resolve_mode'] } },
+    });
+    const settings = rows.reduce<Record<string, string>>((acc, row) => {
+      acc[row.key] = row.value || '';
+      return acc;
+    }, {});
+
+    if (settings.icon_auto_resolve_on_change !== undefined) {
+      return settings.icon_auto_resolve_on_change !== 'false';
+    }
+
+    return settings.icon_resolve_mode !== 'server_only';
   }
 }
