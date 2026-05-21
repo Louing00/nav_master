@@ -449,7 +449,7 @@ export default function Home() {
           </div>
 
           <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_330px]">
-            <label className="flex min-h-14 min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:border-slate-800 dark:bg-slate-950/60">
+            <label className="flex min-h-14 min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:border-slate-800 dark:bg-slate-950/60 dark:shadow-none">
               <Search size={22} className="shrink-0 text-slate-500" />
               <input
                 value={keyword}

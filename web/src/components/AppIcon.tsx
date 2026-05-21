@@ -29,7 +29,7 @@ export default function AppIcon({ app, compact = false }: Props) {
 
   return (
     <span
-      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-black/10 bg-white/85 text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:border-white/10 dark:bg-white/10 dark:text-slate-100 ${
+      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-black/10 bg-white/85 text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:border-slate-700/80 dark:bg-slate-950/50 dark:text-slate-100 dark:shadow-none ${
         compact ? 'h-9 w-9 text-xl' : 'h-10 w-10 text-xl sm:h-12 sm:w-12 sm:text-2xl'
       }`}
       aria-hidden="true"
