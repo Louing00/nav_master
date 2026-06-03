@@ -39,6 +39,7 @@ export default function AppIcon({ app, compact = false }: Props) {
           src={manualIconUrl}
           alt=""
           className={compact ? 'h-5 w-5 object-contain' : 'h-6 w-6 object-contain sm:h-7 sm:w-7'}
+          referrerPolicy="no-referrer"
           onError={() => setManualIconFailed(true)}
         />
       ) : showTextIcon ? (
@@ -48,6 +49,7 @@ export default function AppIcon({ app, compact = false }: Props) {
           src={remoteIconUrl}
           alt=""
           className={compact ? 'h-5 w-5 object-contain' : 'h-6 w-6 object-contain sm:h-7 sm:w-7'}
+          referrerPolicy="no-referrer"
           onError={() => setRemoteIconFailed(true)}
         />
       ) : (
