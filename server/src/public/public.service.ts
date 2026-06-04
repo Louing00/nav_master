@@ -20,6 +20,8 @@ function serializeApp(app: any) {
   return {
     id: app.id,
     name: app.name,
+    resolvedName: app.resolvedName,
+    nameResolvedAt: app.nameResolvedAt,
     url: app.url,
     description: app.description,
     icon: app.icon,

@@ -12,6 +12,8 @@ type ImportCategory = {
 
 type ImportApp = {
   name?: string;
+  resolvedName?: string | null;
+  nameResolvedAt?: string | Date | null;
   url?: string;
   description?: string | null;
   icon?: string | null;
@@ -44,6 +46,14 @@ function parseTags(tags: unknown): string {
     }
   }
   return JSON.stringify([]);
+}
+
+function parseDate(value: string | Date | null | undefined) {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 @Injectable()
@@ -142,15 +152,20 @@ export class ImportExportService {
     }
 
     for (const app of apps) {
-      if (!app.name || !app.url || !/^https?:\/\//.test(app.url)) {
+      if (!app.url || !/^https?:\/\//.test(app.url)) {
         continue;
       }
 
       const categoryId = app.categoryName ? categoryNameToId.get(app.categoryName) : app.categoryId ? categoryIdToId.get(app.categoryId) : undefined;
+      const name = app.name?.trim() || '';
+      const resolvedName = app.resolvedName?.trim() || null;
+      const nameResolvedAt = parseDate(app.nameResolvedAt);
       const saved = await this.prisma.app.upsert({
         where: { userId_url: { userId, url: app.url } },
         update: {
-          name: app.name,
+          name,
+          resolvedName,
+          nameResolvedAt,
           description: app.description,
           icon: app.icon,
           iconUrl: app.iconUrl,
@@ -162,7 +177,9 @@ export class ImportExportService {
           healthEnabled: app.healthEnabled ?? true,
         },
         create: {
-          name: app.name,
+          name,
+          resolvedName,
+          nameResolvedAt,
           url: app.url,
           description: app.description,
           icon: app.icon,

@@ -9,6 +9,7 @@ import { createApp, fetchAdminApps, fetchCategories as fetchAdminCategories } fr
 import { getErrorMessage } from '../api/client';
 import { checkPublicCategoryHealth, fetchPublicApps, fetchPublicConfig, reorderPublicCategoryApps } from '../api/public';
 import Toast, { useToast } from '../components/Toast';
+import { getAppDisplayName } from '../lib/appName';
 import type { NavApp, NavCategory } from '../types/app';
 import type { AdminCategory } from '../types/category';
 import type { SiteSettings } from '../types/setting';
@@ -117,7 +118,7 @@ export default function Home() {
       .map((category) => ({
         ...category,
         apps: category.apps.filter((app) =>
-          [app.name, app.description || '', ...app.tags].join(' ').toLowerCase().includes(q),
+          [getAppDisplayName(app), app.description || '', ...app.tags].join(' ').toLowerCase().includes(q),
         ),
       }))
       .filter((category) => category.apps.length > 0);
@@ -232,6 +233,7 @@ export default function Home() {
     const categoryId = quickAddForm.categoryId ? Number(quickAddForm.categoryId) : undefined;
     const payload = {
       ...quickAddForm,
+      name: quickAddForm.name.trim(),
       iconUrl: quickAddForm.iconUrl.trim() || null,
       categoryId,
       tags: quickAddForm.tags
@@ -581,7 +583,13 @@ export default function Home() {
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <label className="sm:col-span-1">
                 <span className="admin-label">系统名称</span>
-                <input className="admin-input mt-1" required value={quickAddForm.name} onChange={(event) => setQuickAddForm({ ...quickAddForm, name: event.target.value })} autoFocus />
+                <input
+                  className="admin-input mt-1"
+                  value={quickAddForm.name}
+                  onChange={(event) => setQuickAddForm({ ...quickAddForm, name: event.target.value })}
+                  placeholder="留空自动获取网页标题"
+                  autoFocus
+                />
               </label>
               <label className="sm:col-span-1">
                 <span className="admin-label">访问地址</span>

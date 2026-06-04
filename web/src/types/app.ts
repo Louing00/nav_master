@@ -1,6 +1,8 @@
 export type NavApp = {
   id: number;
   name: string;
+  resolvedName?: string | null;
+  nameResolvedAt?: string | null;
   url: string;
   description?: string | null;
   icon?: string | null;

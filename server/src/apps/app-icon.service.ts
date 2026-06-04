@@ -38,6 +38,61 @@ function readAttribute(tag: string, name: string) {
   return match?.[2] || match?.[1] || '';
 }
 
+function decodeHtmlEntities(value: string) {
+  const named: Record<string, string> = {
+    amp: '&',
+    apos: "'",
+    gt: '>',
+    lt: '<',
+    nbsp: ' ',
+    quot: '"',
+  };
+
+  return value.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (entity, code: string) => {
+    const lower = code.toLowerCase();
+    if (lower[0] === '#') {
+      const isHex = lower[1] === 'x';
+      const point = Number.parseInt(lower.slice(isHex ? 2 : 1), isHex ? 16 : 10);
+      return Number.isFinite(point) ? String.fromCodePoint(point) : entity;
+    }
+    return named[lower] || entity;
+  });
+}
+
+function normalizePageName(value: string) {
+  return decodeHtmlEntities(value.replace(/<[^>]*>/g, ' '))
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80);
+}
+
+function extractPageName(html: string) {
+  const title = normalizePageName(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '');
+  if (title) {
+    return title;
+  }
+
+  const metaTags = html.match(/<meta\b[^>]*>/gi) || [];
+  const priorities = ['application-name', 'og:site_name', 'og:title', 'twitter:title'];
+  const candidates = metaTags
+    .map((tag, index) => ({
+      content: readAttribute(tag, 'content'),
+      index,
+      key: (readAttribute(tag, 'name') || readAttribute(tag, 'property')).toLowerCase(),
+    }))
+    .filter((item) => item.content && priorities.includes(item.key))
+    .sort((a, b) => priorities.indexOf(a.key) - priorities.indexOf(b.key) || a.index - b.index);
+
+  for (const candidate of candidates) {
+    const name = normalizePageName(candidate.content);
+    if (name) {
+      return name;
+    }
+  }
+
+  return null;
+}
+
 function extractLinkedIcons(html: string, baseUrl: string) {
   const tags = html.match(/<link\b[^>]*>/gi) || [];
   return tags
@@ -98,6 +153,25 @@ export class AppIconService {
       }
     }
     return null;
+  }
+
+  async resolveName(url: string): Promise<string | null> {
+    try {
+      const response = await fetchWithTimeout(url, { method: 'GET' }, 4500);
+      if (!response.ok) {
+        return null;
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType && !contentType.includes('html') && !contentType.includes('text/plain')) {
+        return null;
+      }
+
+      const html = await response.text();
+      return extractPageName(html.slice(0, 250_000));
+    } catch {
+      return null;
+    }
   }
 
   getBrowserCandidates(url: string) {

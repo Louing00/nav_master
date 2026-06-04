@@ -6,6 +6,7 @@ import AdminModal from '../components/AdminModal';
 import { confirmDelete } from '../components/ConfirmDialog';
 import HealthBadge from '../components/HealthBadge';
 import Toast, { useToast } from '../components/Toast';
+import { getAppDisplayName } from '../lib/appName';
 import type { NavApp } from '../types/app';
 import type { AdminCategory } from '../types/category';
 
@@ -60,7 +61,7 @@ export default function AdminApps() {
 
   const filtered = useMemo(() => {
     const q = keyword.trim().toLowerCase();
-    const rows = q ? apps.filter((app) => [app.name, app.description, ...app.tags].join(' ').toLowerCase().includes(q)) : apps;
+    const rows = q ? apps.filter((app) => [getAppDisplayName(app), app.description, ...app.tags].join(' ').toLowerCase().includes(q)) : apps;
     return [...rows].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0) || a.id - b.id);
   }, [apps, keyword]);
 
@@ -153,6 +154,7 @@ export default function AdminApps() {
     const categoryChanged = editing ? (editing.categoryId || undefined) !== categoryId : false;
     const payload = {
       ...form,
+      name: form.name.trim(),
       iconUrl: form.iconUrl.trim() || null,
       categoryId,
       tags: form.tags
@@ -414,7 +416,7 @@ export default function AdminApps() {
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <h3 className="truncate font-semibold">
-                                {app.icon} {app.name}
+                                {app.icon} {getAppDisplayName(app)}
                               </h3>
                               <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">{app.url}</p>
                             </div>
@@ -532,7 +534,7 @@ export default function AdminApps() {
                                 <GripVertical size={17} />
                               </span>
                             </td>
-                            <td className="px-4 py-4 font-medium">{app.icon} {app.name}</td>
+                            <td className="px-4 py-4 font-medium">{app.icon} {getAppDisplayName(app)}</td>
                             <td className="max-w-xs truncate px-4 py-4 text-slate-500">{app.url}</td>
                             <td className="px-4 py-4">
                               <HealthBadge app={app} />
@@ -624,7 +626,13 @@ export default function AdminApps() {
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <label className="sm:col-span-1">
                 <span className="admin-label">系统名称</span>
-                <input className="admin-input mt-1" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} autoFocus />
+                <input
+                  className="admin-input mt-1"
+                  value={form.name}
+                  onChange={(event) => setForm({ ...form, name: event.target.value })}
+                  placeholder="留空自动获取网页标题"
+                  autoFocus
+                />
               </label>
               <label className="sm:col-span-1">
                 <span className="admin-label">访问地址</span>

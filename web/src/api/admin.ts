@@ -5,7 +5,15 @@ import type { SiteSettings } from '../types/setting';
 
 export type AppPayload = Omit<
   NavApp,
-  'id' | 'resolvedIconUrl' | 'iconResolvedAt' | 'healthStatus' | 'healthCheckedAt' | 'healthLatencyMs' | 'healthError'
+  | 'id'
+  | 'resolvedName'
+  | 'nameResolvedAt'
+  | 'resolvedIconUrl'
+  | 'iconResolvedAt'
+  | 'healthStatus'
+  | 'healthCheckedAt'
+  | 'healthLatencyMs'
+  | 'healthError'
 >;
 export type CategoryPayload = Omit<AdminCategory, 'id' | '_count'>;
 

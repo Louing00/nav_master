@@ -38,6 +38,8 @@ model Category {
 model App {
   id            Int          @id @default(autoincrement())
   name          String
+  resolvedName  String?
+  nameResolvedAt DateTime?
   url           String
   description   String?
   icon          String?

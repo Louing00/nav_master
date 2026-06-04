@@ -2,6 +2,7 @@ import { ExternalLink } from 'lucide-react';
 import AppIcon from './AppIcon';
 import HealthBadge from './HealthBadge';
 import type { NavApp } from '../types/app';
+import { getAppDisplayName } from '../lib/appName';
 
 type Props = {
   app: NavApp;
@@ -11,6 +12,7 @@ type Props = {
 
 export default function AppCard({ app, compact = false, sortMode = false }: Props) {
   const sortClassName = sortMode ? 'cursor-grab active:cursor-grabbing' : '';
+  const displayName = getAppDisplayName(app);
 
   if (compact) {
     return (
@@ -22,7 +24,7 @@ export default function AppCard({ app, compact = false, sortMode = false }: Prop
         title="打开系统"
       >
         <AppIcon app={app} compact />
-        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-ink dark:text-white sm:text-base">{app.name}</h3>
+        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-ink dark:text-white sm:text-base">{displayName}</h3>
         <HealthBadge app={app} compact />
       </a>
     );
@@ -40,7 +42,7 @@ export default function AppCard({ app, compact = false, sortMode = false }: Prop
           <AppIcon app={app} />
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-2">
-              <h3 className="truncate text-base font-semibold text-ink dark:text-white sm:text-lg">{app.name}</h3>
+              <h3 className="truncate text-base font-semibold text-ink dark:text-white sm:text-lg">{displayName}</h3>
               <HealthBadge app={app} quiet />
             </div>
             <p className="mt-1 line-clamp-1 max-w-full text-sm font-medium leading-6 text-slate-600 [overflow-wrap:anywhere] dark:text-slate-300 sm:mt-2 sm:line-clamp-2">

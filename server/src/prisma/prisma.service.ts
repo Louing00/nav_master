@@ -56,6 +56,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
       CREATE TABLE IF NOT EXISTS "App" (
         "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         "name" TEXT NOT NULL,
+        "resolvedName" TEXT,
+        "nameResolvedAt" DATETIME,
         "url" TEXT NOT NULL,
         "description" TEXT,
         "icon" TEXT,
@@ -81,6 +83,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
     `);
     await this.ensureColumn('Category', 'userId', '"userId" INTEGER');
     await this.ensureColumn('App', 'userId', '"userId" INTEGER');
+    await this.ensureColumn('App', 'resolvedName', '"resolvedName" TEXT');
+    await this.ensureColumn('App', 'nameResolvedAt', '"nameResolvedAt" DATETIME');
     await this.ensureColumn('App', 'iconUrl', '"iconUrl" TEXT');
     await this.ensureColumn('App', 'resolvedIconUrl', '"resolvedIconUrl" TEXT');
     await this.ensureColumn('App', 'iconResolvedAt', '"iconResolvedAt" DATETIME');

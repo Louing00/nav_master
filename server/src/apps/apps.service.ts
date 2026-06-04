@@ -33,6 +33,14 @@ function hasManualIcon(icon?: string | null, iconUrl?: string | null) {
   return Boolean(iconUrl?.trim() || (textIcon && textIcon !== DEFAULT_TEXT_ICON));
 }
 
+function normalizeManualName(name?: string | null) {
+  return name?.trim().slice(0, 80) || '';
+}
+
+function hasManualName(name?: string | null) {
+  return Boolean(normalizeManualName(name));
+}
+
 @Injectable()
 export class AppsService {
   constructor(
@@ -52,6 +60,7 @@ export class AppsService {
     if (filters.keyword) {
       where.OR = [
         { name: { contains: filters.keyword } },
+        { resolvedName: { contains: filters.keyword } },
         { description: { contains: filters.keyword } },
         { tags: { contains: filters.keyword } },
       ];
@@ -68,15 +77,18 @@ export class AppsService {
 
   async create(userId: number, dto: CreateAppDto) {
     await this.ensureCategoryBelongsToUser(userId, dto.categoryId);
+    const { tags, name, ...payload } = dto;
     const app = await this.prisma.app.create({
       data: {
-        ...dto,
-        tags: JSON.stringify(dto.tags || []),
+        ...payload,
+        name: normalizeManualName(name),
+        tags: JSON.stringify(tags || []),
         userId,
       },
       include: { category: true },
     });
     this.queueIconResolve(userId, app.id, app.url, app.icon, app.iconUrl);
+    this.queueNameResolve(userId, app.id, app.url, app.name);
     return serialize(app);
   }
 
@@ -87,12 +99,17 @@ export class AppsService {
     const targetUrl = dto.url || existing.url;
     const targetIcon = dto.icon === undefined ? existing.icon : dto.icon;
     const targetIconUrl = dto.iconUrl === undefined ? existing.iconUrl : dto.iconUrl;
+    const targetName = dto.name === undefined ? existing.name : normalizeManualName(dto.name);
     const healthDisabled = dto.healthEnabled === false;
+    const { tags, name, ...payload } = dto;
     const app = await this.prisma.app.update({
       where: { id },
       data: {
-        ...dto,
-        tags: dto.tags === undefined ? undefined : JSON.stringify(dto.tags),
+        ...payload,
+        name: name === undefined ? undefined : normalizeManualName(name),
+        tags: tags === undefined ? undefined : JSON.stringify(tags),
+        resolvedName: urlChanged ? null : undefined,
+        nameResolvedAt: urlChanged ? null : undefined,
         resolvedIconUrl: urlChanged ? null : undefined,
         iconResolvedAt: urlChanged ? null : undefined,
         healthStatus: healthDisabled || urlChanged ? 'unknown' : undefined,
@@ -104,6 +121,9 @@ export class AppsService {
     });
     if (urlChanged) {
       this.queueIconResolve(userId, app.id, targetUrl, targetIcon, targetIconUrl);
+    }
+    if (!hasManualName(targetName)) {
+      this.queueNameResolve(userId, app.id, targetUrl, targetName);
     }
     return serialize(app);
   }
@@ -176,12 +196,27 @@ export class AppsService {
     };
   }
 
+  private async resolveNameCache(url: string) {
+    return {
+      resolvedName: await this.appIconService.resolveName(url),
+      nameResolvedAt: new Date(),
+    };
+  }
+
   private queueIconResolve(userId: number, id: number, url: string, icon?: string | null, iconUrl?: string | null) {
     if (hasManualIcon(icon, iconUrl)) {
       return;
     }
 
     void this.resolveAndCacheIconWhenEnabled(userId, id, url);
+  }
+
+  private queueNameResolve(userId: number, id: number, url: string, name?: string | null) {
+    if (hasManualName(name)) {
+      return;
+    }
+
+    void this.resolveAndCacheName(userId, id, url);
   }
 
   private async resolveAndCacheIconWhenEnabled(userId: number, id: number, url: string) {
@@ -211,6 +246,23 @@ export class AppsService {
       });
     } catch {
       // Icon cache refresh is best-effort; creating or updating an app should stay fast.
+    }
+  }
+
+  private async resolveAndCacheName(userId: number, id: number, url: string) {
+    try {
+      const nameCache = await this.resolveNameCache(url);
+      await this.prisma.app.updateMany({
+        where: {
+          id,
+          userId,
+          url,
+          OR: [{ name: '' }],
+        },
+        data: nameCache,
+      });
+    } catch {
+      // Name cache refresh is best-effort; creating or updating an app should stay fast.
     }
   }
 

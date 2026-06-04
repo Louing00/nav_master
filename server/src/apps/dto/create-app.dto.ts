@@ -1,9 +1,10 @@
 import { IsArray, IsBoolean, IsInt, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 
 export class CreateAppDto {
+  @IsOptional()
   @IsString()
   @MaxLength(80)
-  name: string;
+  name?: string;
 
   @IsUrl({ require_protocol: true, protocols: ['http', 'https'] })
   url: string;
