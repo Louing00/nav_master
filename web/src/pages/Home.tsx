@@ -1,5 +1,5 @@
 import { ArrowUp, LayoutGrid, LogOut, Menu, Moon, Save, Search, Shield, Sun, X } from 'lucide-react';
-import { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminModal from '../components/AdminModal';
 import CategorySection from '../components/CategorySection';
@@ -9,7 +9,7 @@ import { createApp, fetchAdminApps, fetchCategories as fetchAdminCategories } fr
 import { getErrorMessage } from '../api/client';
 import { checkPublicCategoryHealth, fetchPublicApps, fetchPublicConfig, reorderPublicCategoryApps } from '../api/public';
 import Toast, { useToast } from '../components/Toast';
-import { getAppDisplayName } from '../lib/appName';
+import { appNeedsResolvedName, getAppDisplayName } from '../lib/appName';
 import type { NavApp, NavCategory } from '../types/app';
 import type { AdminCategory } from '../types/category';
 import type { SiteSettings } from '../types/setting';
@@ -81,6 +81,7 @@ export default function Home() {
   const [sortingCategoryIds, setSortingCategoryIds] = useState<Set<number>>(new Set());
   const [activeShortcutCategoryId, setActiveShortcutCategoryId] = useState<number | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const nameRefreshAttempts = useRef<Set<string>>(new Set());
   const { toast, showToast, clearToast } = useToast();
 
   useEffect(() => {
@@ -196,6 +197,26 @@ export default function Home() {
     setCategories(await fetchPublicApps());
   }
 
+  useEffect(() => {
+    const pendingApps = categories.flatMap((category) => category.apps).filter(appNeedsResolvedName);
+    const freshPendingApps = pendingApps.filter((app) => {
+      const key = `${app.id}:${app.url}:${app.name || ''}`;
+      if (nameRefreshAttempts.current.has(key)) {
+        return false;
+      }
+      nameRefreshAttempts.current.add(key);
+      return true;
+    });
+    if (!freshPendingApps.length) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void refreshApps();
+    }, 2200);
+    return () => window.clearTimeout(timer);
+  }, [categories]);
+
   function nextSortOrder(categoryId?: number) {
     const groupApps = adminApps.filter((app) => (categoryId ? app.categoryId === categoryId : !app.categoryId));
     return groupApps.reduce((max, app) => Math.max(max, app.sortOrder || 0), 0) + 10;
@@ -248,6 +269,7 @@ export default function Home() {
       showToast('入口已创建');
       closeQuickAdd();
       await refreshApps();
+      window.setTimeout(() => void refreshApps(), 2200);
     } catch (err) {
       setQuickAddError(getErrorMessage(err));
     } finally {

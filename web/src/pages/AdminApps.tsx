@@ -1,12 +1,12 @@
 import { ChevronDown, ChevronRight, GripVertical, Image, Pencil, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { checkAppHealth, createApp, deleteApp, fetchAdminApps, fetchCategories, refreshAppIcon, updateApp } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import AdminModal from '../components/AdminModal';
 import { confirmDelete } from '../components/ConfirmDialog';
 import HealthBadge from '../components/HealthBadge';
 import Toast, { useToast } from '../components/Toast';
-import { getAppDisplayName } from '../lib/appName';
+import { appNeedsResolvedName, getAppDisplayName } from '../lib/appName';
 import type { NavApp } from '../types/app';
 import type { AdminCategory } from '../types/category';
 
@@ -47,6 +47,7 @@ export default function AdminApps() {
   const [refreshingIconIds, setRefreshingIconIds] = useState<Set<number>>(new Set());
   const [checkingAllHealth, setCheckingAllHealth] = useState(false);
   const [healthCheckProgress, setHealthCheckProgress] = useState<{ checked: number; total: number } | null>(null);
+  const nameRefreshAttempts = useRef<Set<string>>(new Set());
   const { toast, showToast, clearToast } = useToast();
 
   async function load() {
@@ -58,6 +59,25 @@ export default function AdminApps() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    const freshPendingApps = apps.filter(appNeedsResolvedName).filter((app) => {
+      const key = `${app.id}:${app.url}:${app.name || ''}`;
+      if (nameRefreshAttempts.current.has(key)) {
+        return false;
+      }
+      nameRefreshAttempts.current.add(key);
+      return true;
+    });
+    if (!freshPendingApps.length) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 2200);
+    return () => window.clearTimeout(timer);
+  }, [apps]);
 
   const filtered = useMemo(() => {
     const q = keyword.trim().toLowerCase();
@@ -174,6 +194,7 @@ export default function AdminApps() {
       }
       closeModal();
       await load();
+      window.setTimeout(() => void load(), 2200);
     } catch (err) {
       setError(getErrorMessage(err));
     }
