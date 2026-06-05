@@ -27,10 +27,25 @@ const KNOWN_ICON_CANDIDATES: Record<string, string[]> = {
   'mail.google.com': ['https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico', 'https://mail.google.com/favicon.ico'],
 };
 
+const BROWSER_LIKE_HEADERS: Record<string, string> = {
+  Accept: '*/*',
+  'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+};
+
+function mergeBrowserHeaders(headers?: HeadersInit) {
+  const merged = new Headers(BROWSER_LIKE_HEADERS);
+  if (headers) {
+    new Headers(headers).forEach((value, key) => merged.set(key, value));
+  }
+  return merged;
+}
+
 function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = 3500) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  return fetch(url, { ...init, signal: controller.signal, redirect: 'follow' }).finally(() => clearTimeout(timeout));
+  return fetch(url, { ...init, headers: mergeBrowserHeaders(init.headers), signal: controller.signal, redirect: 'follow' }).finally(() => clearTimeout(timeout));
 }
 
 function readAttribute(tag: string, name: string) {
