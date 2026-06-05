@@ -5,6 +5,7 @@ import { AppIconService } from './app-icon.service';
 import { CreateAppDto } from './dto/create-app.dto';
 import { UpdateAppDto } from './dto/update-app.dto';
 import { HealthCheckService } from './health-check.service';
+import { hasManualAppName, normalizeManualName, shouldRetryAppNameResolve } from './app-name.util';
 
 function parseTags(tags?: string | null): string[] {
   if (!tags) {
@@ -31,14 +32,6 @@ const DEFAULT_TEXT_ICON = '⌁';
 function hasManualIcon(icon?: string | null, iconUrl?: string | null) {
   const textIcon = icon?.trim();
   return Boolean(iconUrl?.trim() || (textIcon && textIcon !== DEFAULT_TEXT_ICON));
-}
-
-function normalizeManualName(name?: string | null) {
-  return name?.trim().slice(0, 80) || '';
-}
-
-function hasManualName(name?: string | null) {
-  return Boolean(normalizeManualName(name));
 }
 
 @Injectable()
@@ -72,6 +65,7 @@ export class AppsService {
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
 
+    this.queueMissingNameResolve(userId, apps);
     return apps.map(serialize);
   }
 
@@ -122,7 +116,7 @@ export class AppsService {
     if (urlChanged) {
       this.queueIconResolve(userId, app.id, targetUrl, targetIcon, targetIconUrl);
     }
-    if (!hasManualName(targetName)) {
+    if (!hasManualAppName(targetName, targetUrl)) {
       this.queueNameResolve(userId, app.id, targetUrl, targetName);
     }
     return serialize(app);
@@ -212,11 +206,21 @@ export class AppsService {
   }
 
   private queueNameResolve(userId: number, id: number, url: string, name?: string | null) {
-    if (hasManualName(name)) {
+    if (hasManualAppName(name, url)) {
       return;
     }
 
     void this.resolveAndCacheName(userId, id, url);
+  }
+
+  private queueMissingNameResolve(userId: number, apps: Array<{ id: number; url: string; name?: string | null; resolvedName?: string | null }>) {
+    for (const app of apps) {
+      if (app.resolvedName || hasManualAppName(app.name, app.url) || !shouldRetryAppNameResolve(userId, app.id, app.url)) {
+        continue;
+      }
+
+      void this.resolveAndCacheName(userId, app.id, app.url);
+    }
   }
 
   private async resolveAndCacheIconWhenEnabled(userId: number, id: number, url: string) {
@@ -257,7 +261,7 @@ export class AppsService {
           id,
           userId,
           url,
-          OR: [{ name: '' }],
+          OR: [{ resolvedName: null }, { resolvedName: '' }],
         },
         data: nameCache,
       });

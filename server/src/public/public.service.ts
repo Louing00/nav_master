@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { AppIconService } from '../apps/app-icon.service';
+import { hasManualAppName, shouldRetryAppNameResolve } from '../apps/app-name.util';
 import { HealthCheckService } from '../apps/health-check.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -76,12 +77,14 @@ export class PublicService {
         apps: category.apps.map(serializeApp),
       }))
       .filter((category) => category.apps.length > 0);
+    const visibleApps = categories.flatMap((category) => category.apps);
 
     const uncategorized = await this.prisma.app.findMany({
       where: { visible: true, categoryId: null, userId },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
     if (uncategorized.length) {
+      visibleApps.push(...uncategorized);
       grouped.push({
         id: 0,
         name: '未分类',
@@ -91,6 +94,7 @@ export class PublicService {
       });
     }
 
+    this.queueMissingNameResolve(userId, visibleApps);
     return grouped;
   }
 
@@ -205,5 +209,29 @@ export class PublicService {
     }
 
     return settings.icon_resolve_mode !== 'server_only';
+  }
+
+  private queueMissingNameResolve(userId: number, apps: Array<{ id: number; url: string; name?: string | null; resolvedName?: string | null }>) {
+    for (const app of apps) {
+      if (app.resolvedName || hasManualAppName(app.name, app.url) || !shouldRetryAppNameResolve(userId, app.id, app.url)) {
+        continue;
+      }
+
+      void this.resolveAndCacheName(userId, app.id, app.url);
+    }
+  }
+
+  private async resolveAndCacheName(userId: number, id: number, url: string) {
+    try {
+      await this.prisma.app.updateMany({
+        where: { id, userId, url, OR: [{ resolvedName: null }, { resolvedName: '' }] },
+        data: {
+          resolvedName: await this.appIconService.resolveName(url),
+          nameResolvedAt: new Date(),
+        },
+      });
+    } catch {
+      // Name cache refresh is best-effort; listing apps should stay fast.
+    }
   }
 }
