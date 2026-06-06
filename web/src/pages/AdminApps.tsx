@@ -3,9 +3,11 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { checkAppHealth, createApp, deleteApp, fetchAdminApps, fetchCategories, refreshAppIcon, updateApp } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import AdminModal from '../components/AdminModal';
+import AppMetadataPreview from '../components/AppMetadataPreview';
 import { confirmDelete } from '../components/ConfirmDialog';
 import HealthBadge from '../components/HealthBadge';
 import Toast, { useToast } from '../components/Toast';
+import { useAppMetadataPreview } from '../hooks/useAppMetadataPreview';
 import { appNeedsResolvedName, getAppDisplayName } from '../lib/appName';
 import type { NavApp } from '../types/app';
 import type { AdminCategory } from '../types/category';
@@ -49,6 +51,7 @@ export default function AdminApps() {
   const [healthCheckProgress, setHealthCheckProgress] = useState<{ checked: number; total: number } | null>(null);
   const nameRefreshAttempts = useRef<Set<string>>(new Set());
   const { toast, showToast, clearToast } = useToast();
+  const metadataPreview = useAppMetadataPreview(form.url, modalOpen);
 
   async function load() {
     const [appRows, categoryRows] = await Promise.all([fetchAdminApps(), fetchCategories()]);
@@ -274,7 +277,10 @@ export default function AdminApps() {
     try {
       const checked = await checkAppHealth(app.id);
       setApps((current) => current.map((item) => (item.id === app.id ? { ...item, ...checked } : item)));
-      showToast(checked.healthStatus === 'healthy' ? '健康检查正常' : '健康检查异常', checked.healthStatus === 'healthy' ? 'success' : 'error');
+      showToast(
+        checked.healthStatus === 'healthy' ? '健康检查正常' : checked.healthStatus === 'restricted' ? '站点可访问，但当前检查受限' : '健康检查异常',
+        checked.healthStatus === 'healthy' ? 'success' : checked.healthStatus === 'restricted' ? 'info' : 'error',
+      );
     } catch (err) {
       const message = getErrorMessage(err);
       setActionError(message);
@@ -328,6 +334,7 @@ export default function AdminApps() {
     setHealthCheckProgress({ checked: 0, total: enabledApps.length });
 
     let healthyCount = 0;
+    let restrictedCount = 0;
     let unhealthyCount = 0;
     let requestFailedCount = 0;
 
@@ -341,6 +348,8 @@ export default function AdminApps() {
 
           if (checked.healthStatus === 'healthy') {
             healthyCount += 1;
+          } else if (checked.healthStatus === 'restricted') {
+            restrictedCount += 1;
           } else {
             unhealthyCount += 1;
           }
@@ -359,9 +368,12 @@ export default function AdminApps() {
       const hasIssue = unhealthyCount > 0 || requestFailedCount > 0;
       const summary =
         requestFailedCount > 0
-          ? `检查完成：正常 ${healthyCount} 个，异常 ${unhealthyCount} 个，请求失败 ${requestFailedCount} 个`
-          : `检查完成：正常 ${healthyCount} 个，异常 ${unhealthyCount} 个`;
-      showToast(healthyCount + unhealthyCount > 0 ? summary : '健康检查全部失败', hasIssue ? 'error' : 'success');
+          ? `检查完成：正常 ${healthyCount} 个，受限 ${restrictedCount} 个，异常 ${unhealthyCount} 个，请求失败 ${requestFailedCount} 个`
+          : `检查完成：正常 ${healthyCount} 个，受限 ${restrictedCount} 个，异常 ${unhealthyCount} 个`;
+      showToast(
+        healthyCount + restrictedCount + unhealthyCount > 0 ? summary : '健康检查全部失败',
+        hasIssue ? 'error' : restrictedCount > 0 ? 'info' : 'success',
+      );
     } finally {
       setCheckingAllHealth(false);
       setCheckingAppIds(new Set());
@@ -645,19 +657,38 @@ export default function AdminApps() {
             }
           >
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <label className="sm:col-span-1">
+              <label className="sm:col-span-2">
+                <span className="admin-label">访问地址</span>
+                <input
+                  className="admin-input mt-1"
+                  required
+                  value={form.url}
+                  onChange={(event) => setForm({ ...form, url: event.target.value })}
+                  placeholder="https://example.com"
+                  autoFocus
+                />
+              </label>
+              <div className="sm:col-span-2">
+                <AppMetadataPreview
+                  url={form.url}
+                  name={form.name}
+                  icon={form.icon}
+                  iconUrl={form.iconUrl}
+                  metadata={metadataPreview.data}
+                  loading={metadataPreview.loading}
+                  error={metadataPreview.error}
+                  validUrl={metadataPreview.validUrl}
+                  onRetry={metadataPreview.refresh}
+                />
+              </div>
+              <label className="sm:col-span-2">
                 <span className="admin-label">系统名称</span>
                 <input
                   className="admin-input mt-1"
                   value={form.name}
                   onChange={(event) => setForm({ ...form, name: event.target.value })}
-                  placeholder="留空自动获取网页标题"
-                  autoFocus
+                  placeholder="留空使用自动名称"
                 />
-              </label>
-              <label className="sm:col-span-1">
-                <span className="admin-label">访问地址</span>
-                <input className="admin-input mt-1" required value={form.url} onChange={(event) => setForm({ ...form, url: event.target.value })} />
               </label>
               <label className="sm:col-span-2">
                 <span className="admin-label">描述</span>

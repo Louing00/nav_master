@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { AppsService } from './apps.service';
 import { CreateAppDto } from './dto/create-app.dto';
+import { PreviewAppDto } from './dto/preview-app.dto';
 import { UpdateAppDto } from './dto/update-app.dto';
 
 type AuthRequest = Request & { user: { id: number; username: string } };
@@ -24,6 +25,11 @@ export class AppsController {
   @Post()
   create(@Req() request: AuthRequest, @Body() dto: CreateAppDto) {
     return this.appsService.create(request.user.id, dto);
+  }
+
+  @Post('preview')
+  preview(@Body() dto: PreviewAppDto) {
+    return this.appsService.preview(dto.url);
   }
 
   @Post('health-check')

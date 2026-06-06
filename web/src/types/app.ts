@@ -14,7 +14,7 @@ export type NavApp = {
   visible?: boolean;
   sortOrder?: number;
   categoryId?: number | null;
-  healthStatus?: 'unknown' | 'healthy' | 'unhealthy';
+  healthStatus?: 'unknown' | 'healthy' | 'restricted' | 'unhealthy';
   healthCheckedAt?: string | null;
   healthLatencyMs?: number | null;
   healthError?: string | null;

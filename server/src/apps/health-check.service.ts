@@ -3,12 +3,20 @@ import { App } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 type ProbeResult = {
-  healthStatus: 'healthy' | 'unhealthy';
+  healthStatus: 'healthy' | 'restricted' | 'unhealthy';
   healthLatencyMs: number;
   healthError: string | null;
 };
 
 const TIMEOUT_MS = 5000;
+const ACCESS_RESTRICTED_STATUSES = new Set([401, 403, 407, 429, 451]);
+const RETRY_WITH_GET_STATUSES = new Set([401, 403, 405, 407, 429, 451, 501]);
+const BROWSER_LIKE_HEADERS = {
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+};
 
 @Injectable()
 export class HealthCheckService {
@@ -54,8 +62,12 @@ export class HealthCheckService {
 
     try {
       const head = await this.request(url, 'HEAD');
-      if (head.status === 405 || head.status === 501) {
-        return this.statusFromResponse(await this.request(url, 'GET'), startedAt);
+      if (RETRY_WITH_GET_STATUSES.has(head.status)) {
+        try {
+          return this.statusFromResponse(await this.request(url, 'GET'), startedAt);
+        } catch {
+          return this.statusFromResponse(head, startedAt);
+        }
       }
 
       return this.statusFromResponse(head, startedAt);
@@ -82,6 +94,14 @@ export class HealthCheckService {
       };
     }
 
+    if (ACCESS_RESTRICTED_STATUSES.has(response.status)) {
+      return {
+        healthStatus: 'restricted',
+        healthLatencyMs: latency,
+        healthError: `HTTP ${response.status}`,
+      };
+    }
+
     return {
       healthStatus: 'unhealthy',
       healthLatencyMs: latency,
@@ -95,6 +115,7 @@ export class HealthCheckService {
 
     try {
       return await fetch(url, {
+        headers: BROWSER_LIKE_HEADERS,
         method,
         redirect: 'follow',
         signal: controller.signal,

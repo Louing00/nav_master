@@ -86,6 +86,18 @@ export class AppsService {
     return serialize(app);
   }
 
+  async preview(url: string) {
+    const [resolvedName, resolvedIconUrl] = await Promise.all([
+      this.appIconService.resolveName(url),
+      this.appIconService.resolve(url),
+    ]);
+
+    return {
+      resolvedName,
+      resolvedIconUrl,
+    };
+  }
+
   async update(userId: number, id: number, dto: UpdateAppDto) {
     const existing = await this.ensureExists(userId, id);
     await this.ensureCategoryBelongsToUser(userId, dto.categoryId);

@@ -89,6 +89,7 @@ export default function CategorySection({
           {category.apps.map((app) => (
             <div
               key={app.id}
+              id={`app-${app.id}`}
               className={`relative h-full rounded-lg transition ${
                 sortingAppId === app.id ? 'scale-[0.99] opacity-60' : ''
               } ${dragOverAppId === app.id ? 'ring-2 ring-mint/50 ring-offset-2 ring-offset-[#f6f3ec] dark:ring-offset-slate-950' : ''}`}

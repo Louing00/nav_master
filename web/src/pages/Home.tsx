@@ -2,6 +2,7 @@ import { ArrowUp, LayoutGrid, LogOut, Menu, Moon, Save, Search, Shield, Sun, X }
 import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminModal from '../components/AdminModal';
+import AppMetadataPreview from '../components/AppMetadataPreview';
 import CategorySection from '../components/CategorySection';
 import EmptyState from '../components/EmptyState';
 import { logout } from '../api/auth';
@@ -9,6 +10,7 @@ import { createApp, fetchAdminApps, fetchCategories as fetchAdminCategories } fr
 import { getErrorMessage } from '../api/client';
 import { checkPublicCategoryHealth, fetchPublicApps, fetchPublicConfig, reorderPublicCategoryApps } from '../api/public';
 import Toast, { useToast } from '../components/Toast';
+import { useAppMetadataPreview } from '../hooks/useAppMetadataPreview';
 import { appNeedsResolvedName, getAppDisplayName } from '../lib/appName';
 import type { NavApp, NavCategory } from '../types/app';
 import type { AdminCategory } from '../types/category';
@@ -57,8 +59,9 @@ function formatHealthSummary(categoryName: string, checkedApps: NavApp[]) {
   }
 
   const healthy = checkedApps.filter((app) => app.healthStatus === 'healthy').length;
+  const restricted = checkedApps.filter((app) => app.healthStatus === 'restricted').length;
   const unhealthy = checkedApps.filter((app) => app.healthStatus === 'unhealthy').length;
-  return `${categoryName} 检查完成：正常 ${healthy} 个，异常 ${unhealthy} 个`;
+  return `${categoryName} 检查完成：正常 ${healthy} 个，受限 ${restricted} 个，异常 ${unhealthy} 个`;
 }
 
 export default function Home() {
@@ -83,6 +86,7 @@ export default function Home() {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const nameRefreshAttempts = useRef<Set<string>>(new Set());
   const { toast, showToast, clearToast } = useToast();
+  const quickAddPreview = useAppMetadataPreview(quickAddForm.url, quickAddOpen);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
@@ -132,7 +136,9 @@ export default function Home() {
   const allApps = categories.flatMap((category) => category.apps);
   const totalAppCount = allApps.length;
   const healthyAppCount = allApps.filter((app) => app.healthStatus === 'healthy').length;
+  const restrictedAppCount = allApps.filter((app) => app.healthStatus === 'restricted').length;
   const unhealthyAppCount = allApps.filter((app) => app.healthStatus === 'unhealthy').length;
+  const attentionAppCount = restrictedAppCount + unhealthyAppCount;
 
   async function handleLogout() {
     await logout();
@@ -181,7 +187,8 @@ export default function Home() {
       const checkedApps = await checkPublicCategoryHealth(category.id);
       setCategories((current) => mergeCheckedApps(current, checkedApps));
       const hasUnhealthy = checkedApps.some((app) => app.healthStatus === 'unhealthy');
-      showToast(formatHealthSummary(category.name, checkedApps), hasUnhealthy ? 'error' : 'success');
+      const hasRestricted = checkedApps.some((app) => app.healthStatus === 'restricted');
+      showToast(formatHealthSummary(category.name, checkedApps), hasUnhealthy ? 'error' : hasRestricted ? 'info' : 'success');
     } catch (err) {
       showToast(getErrorMessage(err), 'error');
     } finally {
@@ -363,6 +370,25 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  function focusHealthIssue() {
+    const issueApp =
+      allApps.find((app) => app.healthStatus === 'unhealthy') ||
+      allApps.find((app) => app.healthStatus === 'restricted');
+    if (!issueApp) {
+      return;
+    }
+
+    const category = categories.find((item) => item.apps.some((app) => app.id === issueApp.id));
+    if (category) {
+      setCategoryCollapsed(category.id, false);
+      setActiveShortcutCategoryId(category.id);
+    }
+
+    window.setTimeout(() => {
+      document.getElementById(`app-${issueApp.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  }
+
   return (
     <main className="min-h-screen bg-[#f6f3ec] text-ink dark:bg-slate-950 dark:text-slate-100">
       <header className="px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8">
@@ -482,17 +508,36 @@ export default function Home() {
                 className="min-w-0 flex-1 bg-transparent text-base font-medium outline-none placeholder:text-slate-400"
               />
             </label>
-            <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
-              {[
-                ['入口', totalAppCount],
-                ['正常', healthyAppCount],
-                ['异常', unhealthyAppCount],
-              ].map(([label, value]) => (
-                <div key={label} className="min-w-0 rounded-2xl bg-slate-50/80 px-3 py-3 text-center dark:bg-slate-950/60">
-                  <div className="text-2xl font-bold leading-none text-ink dark:text-white">{value}</div>
-                  <div className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</div>
+            <div className="grid min-w-0 grid-cols-3 gap-2">
+              <div className="min-w-0 rounded-xl bg-slate-50/80 px-2 py-2.5 text-center dark:bg-slate-950/60 sm:rounded-2xl sm:px-3 sm:py-3">
+                <div className="text-lg font-bold leading-none text-ink dark:text-white sm:text-2xl">{totalAppCount}</div>
+                <div className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400 sm:text-xs">入口</div>
+              </div>
+              <div className="min-w-0 rounded-xl bg-slate-50/80 px-2 py-2.5 text-center dark:bg-slate-950/60 sm:rounded-2xl sm:px-3 sm:py-3">
+                <div className="text-lg font-bold leading-none text-emerald-700 dark:text-emerald-300 sm:text-2xl">{healthyAppCount}</div>
+                <div className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400 sm:text-xs">正常</div>
+              </div>
+              <button
+                type="button"
+                onClick={focusHealthIssue}
+                disabled={attentionAppCount === 0}
+                className="focus-ring min-w-0 rounded-xl bg-slate-50/80 px-2 py-2.5 text-center transition enabled:hover:bg-amber-50 enabled:hover:ring-1 enabled:hover:ring-amber-200 disabled:cursor-default dark:bg-slate-950/60 dark:enabled:hover:bg-amber-950/30 dark:enabled:hover:ring-amber-900 sm:rounded-2xl sm:px-3 sm:py-3"
+                title={`异常 ${unhealthyAppCount} 个，访问受限 ${restrictedAppCount} 个`}
+                data-tooltip={`异常 ${unhealthyAppCount} 个，访问受限 ${restrictedAppCount} 个`}
+              >
+                <div
+                  className={`text-lg font-bold leading-none sm:text-2xl ${
+                    unhealthyAppCount > 0
+                      ? 'text-red-600 dark:text-red-300'
+                      : restrictedAppCount > 0
+                        ? 'text-amber-700 dark:text-amber-300'
+                        : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  {attentionAppCount}
                 </div>
-              ))}
+                <div className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400 sm:text-xs">需关注</div>
+              </button>
             </div>
           </div>
           {filtered.length > 0 && (
@@ -603,19 +648,38 @@ export default function Home() {
             }
           >
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <label className="sm:col-span-1">
+              <label className="sm:col-span-2">
+                <span className="admin-label">访问地址</span>
+                <input
+                  className="admin-input mt-1"
+                  required
+                  value={quickAddForm.url}
+                  onChange={(event) => setQuickAddForm({ ...quickAddForm, url: event.target.value })}
+                  placeholder="https://example.com"
+                  autoFocus
+                />
+              </label>
+              <div className="sm:col-span-2">
+                <AppMetadataPreview
+                  url={quickAddForm.url}
+                  name={quickAddForm.name}
+                  icon={quickAddForm.icon}
+                  iconUrl={quickAddForm.iconUrl}
+                  metadata={quickAddPreview.data}
+                  loading={quickAddPreview.loading}
+                  error={quickAddPreview.error}
+                  validUrl={quickAddPreview.validUrl}
+                  onRetry={quickAddPreview.refresh}
+                />
+              </div>
+              <label className="sm:col-span-2">
                 <span className="admin-label">系统名称</span>
                 <input
                   className="admin-input mt-1"
                   value={quickAddForm.name}
                   onChange={(event) => setQuickAddForm({ ...quickAddForm, name: event.target.value })}
-                  placeholder="留空自动获取网页标题"
-                  autoFocus
+                  placeholder="留空使用自动名称"
                 />
-              </label>
-              <label className="sm:col-span-1">
-                <span className="admin-label">访问地址</span>
-                <input className="admin-input mt-1" required value={quickAddForm.url} onChange={(event) => setQuickAddForm({ ...quickAddForm, url: event.target.value })} />
               </label>
               <label className="sm:col-span-2">
                 <span className="admin-label">描述</span>

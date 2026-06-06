@@ -13,6 +13,12 @@ const meta = {
     quietClassName: 'text-emerald-700 dark:text-emerald-300',
     dot: 'bg-emerald-500',
   },
+  restricted: {
+    label: '访问受限',
+    className: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
+    quietClassName: 'bg-amber-50 text-amber-800 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-900',
+    dot: 'bg-amber-500',
+  },
   unhealthy: {
     label: '异常',
     className: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-200',
@@ -64,7 +70,7 @@ export default function HealthBadge({ app, compact = false, quiet = false }: Pro
   }
 
   if (quiet) {
-    const needsEmphasis = status === 'unhealthy';
+    const needsEmphasis = status === 'unhealthy' || status === 'restricted';
 
     return (
       <span

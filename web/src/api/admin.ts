@@ -16,6 +16,10 @@ export type AppPayload = Omit<
   | 'healthError'
 >;
 export type CategoryPayload = Omit<AdminCategory, 'id' | '_count'>;
+export type AppMetadataPreview = {
+  resolvedName: string | null;
+  resolvedIconUrl: string | null;
+};
 
 export async function fetchAdminApps() {
   const { data } = await client.get<NavApp[]>('/admin/apps');
@@ -24,6 +28,11 @@ export async function fetchAdminApps() {
 
 export async function createApp(payload: Partial<AppPayload>) {
   const { data } = await client.post('/admin/apps', payload);
+  return data;
+}
+
+export async function previewAppMetadata(url: string, signal?: AbortSignal) {
+  const { data } = await client.post<AppMetadataPreview>('/admin/apps/preview', { url }, { signal });
   return data;
 }
 
