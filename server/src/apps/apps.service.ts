@@ -87,13 +87,13 @@ export class AppsService {
   }
 
   async preview(url: string) {
-    const [resolvedName, resolvedIconUrl] = await Promise.all([
-      this.appIconService.resolveName(url),
+    const [pageMetadata, resolvedIconUrl] = await Promise.all([
+      this.appIconService.resolvePageMetadata(url),
       this.appIconService.resolve(url),
     ]);
 
     return {
-      resolvedName,
+      ...pageMetadata,
       resolvedIconUrl,
     };
   }

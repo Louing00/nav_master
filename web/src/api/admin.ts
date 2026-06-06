@@ -18,6 +18,7 @@ export type AppPayload = Omit<
 export type CategoryPayload = Omit<AdminCategory, 'id' | '_count'>;
 export type AppMetadataPreview = {
   resolvedName: string | null;
+  resolvedDescription: string | null;
   resolvedIconUrl: string | null;
 };
 

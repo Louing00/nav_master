@@ -50,6 +50,7 @@ export default function AdminApps() {
   const [checkingAllHealth, setCheckingAllHealth] = useState(false);
   const [healthCheckProgress, setHealthCheckProgress] = useState<{ checked: number; total: number } | null>(null);
   const nameRefreshAttempts = useRef<Set<string>>(new Set());
+  const autoDescription = useRef<string | null>(null);
   const { toast, showToast, clearToast } = useToast();
   const metadataPreview = useAppMetadataPreview(form.url, modalOpen);
 
@@ -62,6 +63,21 @@ export default function AdminApps() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    const resolvedDescription = metadataPreview.data?.resolvedDescription;
+    if (!resolvedDescription) {
+      return;
+    }
+
+    setForm((current) => {
+      if (current.description.trim() && current.description !== autoDescription.current) {
+        return current;
+      }
+      autoDescription.current = resolvedDescription;
+      return { ...current, description: resolvedDescription };
+    });
+  }, [metadataPreview.data?.resolvedDescription]);
 
   useEffect(() => {
     const freshPendingApps = apps.filter(appNeedsResolvedName).filter((app) => {
@@ -138,6 +154,7 @@ export default function AdminApps() {
   }
 
   function startCreate() {
+    autoDescription.current = null;
     setEditing(null);
     setForm(blank);
     setError('');
@@ -145,6 +162,7 @@ export default function AdminApps() {
   }
 
   function startEdit(app: NavApp) {
+    autoDescription.current = null;
     setEditing(app);
     setForm({
       name: app.name,
@@ -164,6 +182,7 @@ export default function AdminApps() {
   }
 
   function closeModal() {
+    autoDescription.current = null;
     setEditing(null);
     setForm(blank);
     setError('');
@@ -692,7 +711,15 @@ export default function AdminApps() {
               </label>
               <label className="sm:col-span-2">
                 <span className="admin-label">描述</span>
-                <textarea className="admin-input mt-1 min-h-20" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
+                <textarea
+                  className="admin-input mt-1 min-h-20"
+                  value={form.description}
+                  onChange={(event) => {
+                    autoDescription.current = null;
+                    setForm({ ...form, description: event.target.value });
+                  }}
+                  placeholder="留空自动读取站点简介"
+                />
               </label>
               <label>
                 <span className="admin-label">图标字符</span>

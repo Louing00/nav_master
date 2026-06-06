@@ -74,11 +74,19 @@ function decodeHtmlEntities(value: string) {
   });
 }
 
-function normalizePageName(value: string) {
+function normalizePageText(value: string, maxLength: number) {
   return decodeHtmlEntities(value.replace(/<[^>]*>/g, ' '))
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, 80);
+    .slice(0, maxLength);
+}
+
+function normalizePageName(value: string) {
+  return normalizePageText(value, 80);
+}
+
+function normalizePageDescription(value: string) {
+  return normalizePageText(value, 300);
 }
 
 function extractPageName(html: string) {
@@ -102,6 +110,28 @@ function extractPageName(html: string) {
     const name = normalizePageName(candidate.content);
     if (name) {
       return name;
+    }
+  }
+
+  return null;
+}
+
+function extractPageDescription(html: string) {
+  const metaTags = html.match(/<meta\b[^>]*>/gi) || [];
+  const priorities = ['description', 'og:description', 'twitter:description'];
+  const candidates = metaTags
+    .map((tag, index) => ({
+      content: readAttribute(tag, 'content'),
+      index,
+      key: (readAttribute(tag, 'name') || readAttribute(tag, 'property')).toLowerCase(),
+    }))
+    .filter((item) => item.content && priorities.includes(item.key))
+    .sort((a, b) => priorities.indexOf(a.key) - priorities.indexOf(b.key) || a.index - b.index);
+
+  for (const candidate of candidates) {
+    const description = normalizePageDescription(candidate.content);
+    if (description) {
+      return description;
     }
   }
 
@@ -170,23 +200,30 @@ export class AppIconService {
     return null;
   }
 
-  async resolveName(url: string): Promise<string | null> {
+  async resolvePageMetadata(url: string): Promise<{ resolvedName: string | null; resolvedDescription: string | null }> {
     try {
       const response = await fetchWithTimeout(url, { method: 'GET' }, 4500);
       if (!response.ok) {
-        return null;
+        return { resolvedName: null, resolvedDescription: null };
       }
 
       const contentType = response.headers.get('content-type') || '';
       if (contentType && !contentType.includes('html') && !contentType.includes('text/plain')) {
-        return null;
+        return { resolvedName: null, resolvedDescription: null };
       }
 
-      const html = await response.text();
-      return extractPageName(html.slice(0, 250_000));
+      const html = (await response.text()).slice(0, 250_000);
+      return {
+        resolvedName: extractPageName(html),
+        resolvedDescription: extractPageDescription(html),
+      };
     } catch {
-      return null;
+      return { resolvedName: null, resolvedDescription: null };
     }
+  }
+
+  async resolveName(url: string): Promise<string | null> {
+    return (await this.resolvePageMetadata(url)).resolvedName;
   }
 
   getBrowserCandidates(url: string) {

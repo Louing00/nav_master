@@ -79,6 +79,11 @@ export default function AppMetadataPreview({
             <span>等待读取站点信息</span>
           )}
         </div>
+        {metadata?.resolvedDescription ? (
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+            {metadata.resolvedDescription}
+          </p>
+        ) : null}
       </div>
     </div>
   );

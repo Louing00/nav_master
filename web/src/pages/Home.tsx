@@ -85,6 +85,7 @@ export default function Home() {
   const [activeShortcutCategoryId, setActiveShortcutCategoryId] = useState<number | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const nameRefreshAttempts = useRef<Set<string>>(new Set());
+  const quickAddAutoDescription = useRef<string | null>(null);
   const { toast, showToast, clearToast } = useToast();
   const quickAddPreview = useAppMetadataPreview(quickAddForm.url, quickAddOpen);
 
@@ -112,6 +113,21 @@ export default function Home() {
       setCategories(apps);
     });
   }, []);
+
+  useEffect(() => {
+    const resolvedDescription = quickAddPreview.data?.resolvedDescription;
+    if (!resolvedDescription) {
+      return;
+    }
+
+    setQuickAddForm((current) => {
+      if (current.description.trim() && current.description !== quickAddAutoDescription.current) {
+        return current;
+      }
+      quickAddAutoDescription.current = resolvedDescription;
+      return { ...current, description: resolvedDescription };
+    });
+  }, [quickAddPreview.data?.resolvedDescription]);
 
   const filtered = useMemo(() => {
     const q = keyword.trim().toLowerCase();
@@ -231,6 +247,7 @@ export default function Home() {
 
   async function startQuickAdd(category: NavCategory) {
     const categoryId = category.id === 0 ? undefined : category.id;
+    quickAddAutoDescription.current = null;
     setQuickAddForm({ ...quickAppBlank, categoryId });
     setQuickAddError('');
     setQuickAddOpen(true);
@@ -247,6 +264,7 @@ export default function Home() {
   }
 
   function closeQuickAdd() {
+    quickAddAutoDescription.current = null;
     setQuickAddOpen(false);
     setQuickAddError('');
     setQuickAddSaving(false);
@@ -683,7 +701,15 @@ export default function Home() {
               </label>
               <label className="sm:col-span-2">
                 <span className="admin-label">描述</span>
-                <textarea className="admin-input mt-1 min-h-20" value={quickAddForm.description} onChange={(event) => setQuickAddForm({ ...quickAddForm, description: event.target.value })} />
+                <textarea
+                  className="admin-input mt-1 min-h-20"
+                  value={quickAddForm.description}
+                  onChange={(event) => {
+                    quickAddAutoDescription.current = null;
+                    setQuickAddForm({ ...quickAddForm, description: event.target.value });
+                  }}
+                  placeholder="留空自动读取站点简介"
+                />
               </label>
               <label>
                 <span className="admin-label">图标字符</span>
