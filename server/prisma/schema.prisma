@@ -15,9 +15,9 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  categories   Category[]
-  apps         App[]
-  settings     Setting[]
+  categories Category[]
+  apps       App[]
+  settings   Setting[]
 }
 
 model Category {
@@ -31,38 +31,40 @@ model Category {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  apps        App[]
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apps App[]
 }
 
 model App {
-  id            Int          @id @default(autoincrement())
-  name          String
-  resolvedName  String?
-  nameResolvedAt DateTime?
-  url           String
-  description   String?
-  icon          String?
-  iconUrl       String?
-  resolvedIconUrl String?
-  iconResolvedAt DateTime?
-  categoryId    Int?
-  tags          String?
-  sortOrder     Int          @default(0)
-  visible       Boolean      @default(true)
-  openInNewTab  Boolean      @default(true)
-  healthStatus  String       @default("unknown")
-  healthCheckedAt DateTime?
-  healthLatencyMs Int?
-  healthError   String?
-  healthEnabled Boolean      @default(true)
-  userId        Int
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                    Int       @id @default(autoincrement())
+  name                  String
+  resolvedName          String?
+  nameResolvedAt        DateTime?
+  url                   String
+  description           String?
+  resolvedDescription   String?
+  descriptionResolvedAt DateTime?
+  icon                  String?
+  iconUrl               String?
+  resolvedIconUrl       String?
+  iconResolvedAt        DateTime?
+  categoryId            Int?
+  tags                  String?
+  sortOrder             Int       @default(0)
+  visible               Boolean   @default(true)
+  openInNewTab          Boolean   @default(true)
+  healthStatus          String    @default("unknown")
+  healthCheckedAt       DateTime?
+  healthLatencyMs       Int?
+  healthError           String?
+  healthEnabled         Boolean   @default(true)
+  userId                Int
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category      Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  features      AppFeature[]
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  features AppFeature[]
 
   @@unique([userId, url])
 }
@@ -77,7 +79,7 @@ model AppFeature {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  app         App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  app App @relation(fields: [appId], references: [id], onDelete: Cascade)
 }
 
 model Setting {
@@ -87,7 +89,7 @@ model Setting {
   userId    Int
   updatedAt DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, key])
 }

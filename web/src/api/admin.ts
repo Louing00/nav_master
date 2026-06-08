@@ -8,6 +8,8 @@ export type AppPayload = Omit<
   | 'id'
   | 'resolvedName'
   | 'nameResolvedAt'
+  | 'resolvedDescription'
+  | 'descriptionResolvedAt'
   | 'resolvedIconUrl'
   | 'iconResolvedAt'
   | 'healthStatus'

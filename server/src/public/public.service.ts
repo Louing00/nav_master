@@ -25,6 +25,8 @@ function serializeApp(app: any) {
     nameResolvedAt: app.nameResolvedAt,
     url: app.url,
     description: app.description,
+    resolvedDescription: app.resolvedDescription,
+    descriptionResolvedAt: app.descriptionResolvedAt,
     icon: app.icon,
     iconUrl: app.iconUrl,
     resolvedIconUrl: app.resolvedIconUrl,
@@ -94,7 +96,7 @@ export class PublicService {
       });
     }
 
-    this.queueMissingNameResolve(userId, visibleApps);
+    this.queueMissingMetadataResolve(userId, visibleApps);
     return grouped;
   }
 
@@ -211,27 +213,68 @@ export class PublicService {
     return settings.icon_resolve_mode !== 'server_only';
   }
 
-  private queueMissingNameResolve(userId: number, apps: Array<{ id: number; url: string; name?: string | null; resolvedName?: string | null }>) {
+  private queueMissingMetadataResolve(
+    userId: number,
+    apps: Array<{
+      id: number;
+      url: string;
+      name?: string | null;
+      resolvedName?: string | null;
+      description?: string | null;
+      resolvedDescription?: string | null;
+    }>,
+  ) {
     for (const app of apps) {
-      if (app.resolvedName || hasManualAppName(app.name, app.url) || !shouldRetryAppNameResolve(userId, app.id, app.url)) {
+      const needsName = !app.resolvedName?.trim() && !hasManualAppName(app.name, app.url);
+      const needsDescription = !app.description?.trim() && !app.resolvedDescription?.trim();
+      if ((!needsName && !needsDescription) || !shouldRetryAppNameResolve(userId, app.id, app.url)) {
         continue;
       }
 
-      void this.resolveAndCacheName(userId, app.id, app.url);
+      void this.resolveAndCacheMetadata(userId, app.id, app.url);
     }
   }
 
-  private async resolveAndCacheName(userId: number, id: number, url: string) {
+  private async resolveAndCacheMetadata(userId: number, id: number, url: string) {
     try {
-      await this.prisma.app.updateMany({
-        where: { id, userId, url, OR: [{ resolvedName: null }, { resolvedName: '' }] },
-        data: {
-          resolvedName: await this.appIconService.resolveName(url),
-          nameResolvedAt: new Date(),
+      const app = await this.prisma.app.findFirst({
+        where: { id, userId, url },
+        select: {
+          name: true,
+          description: true,
         },
       });
+      if (!app) {
+        return;
+      }
+
+      const metadata = await this.appIconService.resolvePageMetadata(url);
+      const data: {
+        resolvedName?: string | null;
+        nameResolvedAt?: Date;
+        resolvedDescription?: string | null;
+        descriptionResolvedAt?: Date;
+      } = {};
+      const resolvedAt = new Date();
+
+      if (!hasManualAppName(app.name, url)) {
+        data.resolvedName = metadata.resolvedName;
+        data.nameResolvedAt = resolvedAt;
+      }
+      if (!app.description?.trim()) {
+        data.resolvedDescription = metadata.resolvedDescription;
+        data.descriptionResolvedAt = resolvedAt;
+      }
+      if (Object.keys(data).length === 0) {
+        return;
+      }
+
+      await this.prisma.app.updateMany({
+        where: { id, userId, url },
+        data,
+      });
     } catch {
-      // Name cache refresh is best-effort; listing apps should stay fast.
+      // Metadata refresh is best-effort; listing apps should stay fast.
     }
   }
 }

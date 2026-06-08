@@ -55,6 +55,7 @@ export class AppsService {
         { name: { contains: filters.keyword } },
         { resolvedName: { contains: filters.keyword } },
         { description: { contains: filters.keyword } },
+        { resolvedDescription: { contains: filters.keyword } },
         { tags: { contains: filters.keyword } },
       ];
     }
@@ -65,7 +66,7 @@ export class AppsService {
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
 
-    this.queueMissingNameResolve(userId, apps);
+    this.queueMissingMetadataResolve(userId, apps);
     return apps.map(serialize);
   }
 
@@ -81,21 +82,12 @@ export class AppsService {
       },
       include: { category: true },
     });
-    this.queueIconResolve(userId, app.id, app.url, app.icon, app.iconUrl);
-    this.queueNameResolve(userId, app.id, app.url, app.name);
+    this.queueMetadataResolve(userId, app.id, app.url);
     return serialize(app);
   }
 
   async preview(url: string) {
-    const [pageMetadata, resolvedIconUrl] = await Promise.all([
-      this.appIconService.resolvePageMetadata(url),
-      this.appIconService.resolve(url),
-    ]);
-
-    return {
-      ...pageMetadata,
-      resolvedIconUrl,
-    };
+    return this.appIconService.resolveMetadata(url);
   }
 
   async update(userId: number, id: number, dto: UpdateAppDto) {
@@ -103,9 +95,6 @@ export class AppsService {
     await this.ensureCategoryBelongsToUser(userId, dto.categoryId);
     const urlChanged = dto.url !== undefined && dto.url !== existing.url;
     const targetUrl = dto.url || existing.url;
-    const targetIcon = dto.icon === undefined ? existing.icon : dto.icon;
-    const targetIconUrl = dto.iconUrl === undefined ? existing.iconUrl : dto.iconUrl;
-    const targetName = dto.name === undefined ? existing.name : normalizeManualName(dto.name);
     const healthDisabled = dto.healthEnabled === false;
     const { tags, name, ...payload } = dto;
     const app = await this.prisma.app.update({
@@ -116,6 +105,8 @@ export class AppsService {
         tags: tags === undefined ? undefined : JSON.stringify(tags),
         resolvedName: urlChanged ? null : undefined,
         nameResolvedAt: urlChanged ? null : undefined,
+        resolvedDescription: urlChanged ? null : undefined,
+        descriptionResolvedAt: urlChanged ? null : undefined,
         resolvedIconUrl: urlChanged ? null : undefined,
         iconResolvedAt: urlChanged ? null : undefined,
         healthStatus: healthDisabled || urlChanged ? 'unknown' : undefined,
@@ -125,12 +116,7 @@ export class AppsService {
       },
       include: { category: true },
     });
-    if (urlChanged) {
-      this.queueIconResolve(userId, app.id, targetUrl, targetIcon, targetIconUrl);
-    }
-    if (!hasManualAppName(targetName, targetUrl)) {
-      this.queueNameResolve(userId, app.id, targetUrl, targetName);
-    }
+    this.queueMetadataResolve(userId, app.id, targetUrl);
     return serialize(app);
   }
 
@@ -147,7 +133,7 @@ export class AppsService {
     const existing = await this.ensureExists(userId, id);
     const app = await this.prisma.app.update({
       where: { id },
-      data: await this.resolveIconCache(existing.url),
+      data: await this.resolveIconCache(existing.url, true),
       include: { category: true },
     });
     return serialize(app);
@@ -195,90 +181,95 @@ export class AppsService {
     }
   }
 
-  private async resolveIconCache(url: string) {
+  private async resolveIconCache(url: string, force = false) {
     return {
-      resolvedIconUrl: await this.appIconService.resolve(url),
+      resolvedIconUrl: await this.appIconService.resolve(url, { force }),
       iconResolvedAt: new Date(),
     };
   }
 
-  private async resolveNameCache(url: string) {
-    return {
-      resolvedName: await this.appIconService.resolveName(url),
-      nameResolvedAt: new Date(),
-    };
+  private queueMetadataResolve(userId: number, id: number, url: string) {
+    void this.resolveAndCacheMetadata(userId, id, url);
   }
 
-  private queueIconResolve(userId: number, id: number, url: string, icon?: string | null, iconUrl?: string | null) {
-    if (hasManualIcon(icon, iconUrl)) {
-      return;
-    }
-
-    void this.resolveAndCacheIconWhenEnabled(userId, id, url);
-  }
-
-  private queueNameResolve(userId: number, id: number, url: string, name?: string | null) {
-    if (hasManualAppName(name, url)) {
-      return;
-    }
-
-    void this.resolveAndCacheName(userId, id, url);
-  }
-
-  private queueMissingNameResolve(userId: number, apps: Array<{ id: number; url: string; name?: string | null; resolvedName?: string | null }>) {
+  private queueMissingMetadataResolve(
+    userId: number,
+    apps: Array<{
+      id: number;
+      url: string;
+      name?: string | null;
+      resolvedName?: string | null;
+      description?: string | null;
+      resolvedDescription?: string | null;
+    }>,
+  ) {
     for (const app of apps) {
-      if (app.resolvedName || hasManualAppName(app.name, app.url) || !shouldRetryAppNameResolve(userId, app.id, app.url)) {
+      const needsName = !app.resolvedName?.trim() && !hasManualAppName(app.name, app.url);
+      const needsDescription = !app.description?.trim() && !app.resolvedDescription?.trim();
+      if ((!needsName && !needsDescription) || !shouldRetryAppNameResolve(userId, app.id, app.url)) {
         continue;
       }
 
-      void this.resolveAndCacheName(userId, app.id, app.url);
+      this.queueMetadataResolve(userId, app.id, app.url);
     }
   }
 
-  private async resolveAndCacheIconWhenEnabled(userId: number, id: number, url: string) {
+  private async resolveAndCacheMetadata(userId: number, id: number, url: string) {
     try {
-      if (!(await this.iconAutoResolveOnChangeEnabled(userId))) {
+      const app = await this.prisma.app.findFirst({
+        where: { id, userId, url },
+        select: {
+          name: true,
+          resolvedName: true,
+          description: true,
+          resolvedDescription: true,
+          icon: true,
+          iconUrl: true,
+          resolvedIconUrl: true,
+        },
+      });
+      if (!app) {
         return;
       }
 
-      await this.resolveAndCacheIcon(userId, id, url);
-    } catch {
-      // Icon cache refresh is best-effort; creating or updating an app should stay fast.
-    }
-  }
+      const needsName = !app.resolvedName?.trim() && !hasManualAppName(app.name, url);
+      const needsDescription = !app.description?.trim() && !app.resolvedDescription?.trim();
+      const needsIcon =
+        !app.resolvedIconUrl?.trim() &&
+        !hasManualIcon(app.icon, app.iconUrl) &&
+        (await this.iconAutoResolveOnChangeEnabled(userId));
+      if (!needsName && !needsDescription && !needsIcon) {
+        return;
+      }
 
-  private async resolveAndCacheIcon(userId: number, id: number, url: string) {
-    try {
-      const iconCache = await this.resolveIconCache(url);
+      const metadata = needsIcon
+        ? await this.appIconService.resolveMetadata(url)
+        : {
+            ...(await this.appIconService.resolvePageMetadata(url)),
+            resolvedIconUrl: null,
+          };
+      const resolvedAt = new Date();
+      const data: Prisma.AppUpdateManyMutationInput = {};
+
+      if (needsName) {
+        data.resolvedName = metadata.resolvedName;
+        data.nameResolvedAt = resolvedAt;
+      }
+      if (needsDescription) {
+        data.resolvedDescription = metadata.resolvedDescription;
+        data.descriptionResolvedAt = resolvedAt;
+      }
+      if (needsIcon) {
+        data.resolvedIconUrl = metadata.resolvedIconUrl;
+        data.iconResolvedAt = resolvedAt;
+      }
+
       await this.prisma.app.updateMany({
-        where: {
-          id,
-          userId,
-          url,
-          AND: [{ OR: [{ icon: null }, { icon: '' }, { icon: DEFAULT_TEXT_ICON }] }],
-          OR: [{ iconUrl: null }, { iconUrl: '' }],
-        },
-        data: iconCache,
+        where: { id, userId, url },
+        data,
       });
     } catch {
-      // Icon cache refresh is best-effort; creating or updating an app should stay fast.
-    }
-  }
-
-  private async resolveAndCacheName(userId: number, id: number, url: string) {
-    try {
-      const nameCache = await this.resolveNameCache(url);
-      await this.prisma.app.updateMany({
-        where: {
-          id,
-          userId,
-          url,
-          OR: [{ resolvedName: null }, { resolvedName: '' }],
-        },
-        data: nameCache,
-      });
-    } catch {
-      // Name cache refresh is best-effort; creating or updating an app should stay fast.
+      // Metadata refresh is best-effort; creating or updating an app should stay fast.
     }
   }
 

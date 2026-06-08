@@ -74,7 +74,10 @@ export default function AppMetadataPreview({
               </button>
             </>
           ) : metadata ? (
-            <span>{manualIcon ? '使用手动图标' : metadata.resolvedIconUrl ? '已获取在线图标' : '未找到在线图标'}</span>
+            <span>
+              {manualIcon ? '使用手动图标' : metadata.resolvedIconUrl ? '已获取在线图标' : '未找到在线图标'}
+              {metadata.resolvedDescription ? ' · 已获取简介' : ''}
+            </span>
           ) : (
             <span>等待读取站点信息</span>
           )}

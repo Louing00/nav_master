@@ -16,6 +16,8 @@ type ImportApp = {
   nameResolvedAt?: string | Date | null;
   url?: string;
   description?: string | null;
+  resolvedDescription?: string | null;
+  descriptionResolvedAt?: string | Date | null;
   icon?: string | null;
   iconUrl?: string | null;
   categoryId?: number | null;
@@ -160,6 +162,8 @@ export class ImportExportService {
       const name = app.name?.trim() || '';
       const resolvedName = app.resolvedName?.trim() || null;
       const nameResolvedAt = parseDate(app.nameResolvedAt);
+      const resolvedDescription = app.resolvedDescription?.trim() || null;
+      const descriptionResolvedAt = parseDate(app.descriptionResolvedAt);
       const saved = await this.prisma.app.upsert({
         where: { userId_url: { userId, url: app.url } },
         update: {
@@ -167,6 +171,8 @@ export class ImportExportService {
           resolvedName,
           nameResolvedAt,
           description: app.description,
+          resolvedDescription,
+          descriptionResolvedAt,
           icon: app.icon,
           iconUrl: app.iconUrl,
           categoryId: categoryId || null,
@@ -182,6 +188,8 @@ export class ImportExportService {
           nameResolvedAt,
           url: app.url,
           description: app.description,
+          resolvedDescription,
+          descriptionResolvedAt,
           icon: app.icon,
           iconUrl: app.iconUrl,
           categoryId: categoryId || null,

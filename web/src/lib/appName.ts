@@ -22,6 +22,12 @@ export function appNeedsResolvedName(app: Pick<NavApp, 'id' | 'name' | 'resolved
   return !app.resolvedName?.trim() && (!manualName || isFallbackName(manualName, app.url));
 }
 
+export function appNeedsResolvedMetadata(
+  app: Pick<NavApp, 'id' | 'name' | 'resolvedName' | 'url' | 'description' | 'resolvedDescription'>,
+) {
+  return appNeedsResolvedName(app) || (!app.description?.trim() && !app.resolvedDescription?.trim());
+}
+
 export function getAppDisplayName(app: Pick<NavApp, 'name' | 'resolvedName' | 'url'>) {
   const manualName = app.name?.trim();
   if (manualName && !isFallbackName(manualName, app.url)) {
@@ -42,4 +48,8 @@ export function getAppDisplayName(app: Pick<NavApp, 'name' | 'resolvedName' | 'u
   } catch {
     return '未命名入口';
   }
+}
+
+export function getAppDisplayDescription(app: Pick<NavApp, 'description' | 'resolvedDescription'>) {
+  return app.description?.trim() || app.resolvedDescription?.trim() || '';
 }

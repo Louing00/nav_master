@@ -5,6 +5,8 @@ export type NavApp = {
   nameResolvedAt?: string | null;
   url: string;
   description?: string | null;
+  resolvedDescription?: string | null;
+  descriptionResolvedAt?: string | null;
   icon?: string | null;
   iconUrl?: string | null;
   resolvedIconUrl?: string | null;

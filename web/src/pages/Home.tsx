@@ -11,7 +11,7 @@ import { getErrorMessage } from '../api/client';
 import { checkPublicCategoryHealth, fetchPublicApps, fetchPublicConfig, reorderPublicCategoryApps } from '../api/public';
 import Toast, { useToast } from '../components/Toast';
 import { useAppMetadataPreview } from '../hooks/useAppMetadataPreview';
-import { appNeedsResolvedName, getAppDisplayName } from '../lib/appName';
+import { appNeedsResolvedMetadata, getAppDisplayDescription, getAppDisplayName } from '../lib/appName';
 import type { NavApp, NavCategory } from '../types/app';
 import type { AdminCategory } from '../types/category';
 import type { SiteSettings } from '../types/setting';
@@ -84,7 +84,7 @@ export default function Home() {
   const [sortingCategoryIds, setSortingCategoryIds] = useState<Set<number>>(new Set());
   const [activeShortcutCategoryId, setActiveShortcutCategoryId] = useState<number | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const nameRefreshAttempts = useRef<Set<string>>(new Set());
+  const metadataRefreshAttempts = useRef<Set<string>>(new Set());
   const quickAddAutoDescription = useRef<string | null>(null);
   const { toast, showToast, clearToast } = useToast();
   const quickAddPreview = useAppMetadataPreview(quickAddForm.url, quickAddOpen);
@@ -139,7 +139,7 @@ export default function Home() {
       .map((category) => ({
         ...category,
         apps: category.apps.filter((app) =>
-          [getAppDisplayName(app), app.description || '', ...app.tags].join(' ').toLowerCase().includes(q),
+          [getAppDisplayName(app), getAppDisplayDescription(app), ...app.tags].join(' ').toLowerCase().includes(q),
         ),
       }))
       .filter((category) => category.apps.length > 0);
@@ -155,6 +155,9 @@ export default function Home() {
   const restrictedAppCount = allApps.filter((app) => app.healthStatus === 'restricted').length;
   const unhealthyAppCount = allApps.filter((app) => app.healthStatus === 'unhealthy').length;
   const attentionAppCount = restrictedAppCount + unhealthyAppCount;
+  const quickAddDescriptionIsAuto = Boolean(
+    quickAddAutoDescription.current && quickAddForm.description === quickAddAutoDescription.current,
+  );
 
   async function handleLogout() {
     await logout();
@@ -221,13 +224,13 @@ export default function Home() {
   }
 
   useEffect(() => {
-    const pendingApps = categories.flatMap((category) => category.apps).filter(appNeedsResolvedName);
+    const pendingApps = categories.flatMap((category) => category.apps).filter(appNeedsResolvedMetadata);
     const freshPendingApps = pendingApps.filter((app) => {
-      const key = `${app.id}:${app.url}:${app.name || ''}`;
-      if (nameRefreshAttempts.current.has(key)) {
+      const key = `${app.id}:${app.url}:${app.name || ''}:${app.description || ''}`;
+      if (metadataRefreshAttempts.current.has(key)) {
         return false;
       }
-      nameRefreshAttempts.current.add(key);
+      metadataRefreshAttempts.current.add(key);
       return true;
     });
     if (!freshPendingApps.length) {
@@ -280,6 +283,7 @@ export default function Home() {
     const payload = {
       ...quickAddForm,
       name: quickAddForm.name.trim(),
+      description: quickAddDescriptionIsAuto ? '' : quickAddForm.description.trim(),
       iconUrl: quickAddForm.iconUrl.trim() || null,
       categoryId,
       tags: quickAddForm.tags
@@ -700,7 +704,14 @@ export default function Home() {
                 />
               </label>
               <label className="sm:col-span-2">
-                <span className="admin-label">描述</span>
+                <span className="flex items-center gap-2">
+                  <span className="admin-label">描述</span>
+                  {quickAddDescriptionIsAuto ? (
+                    <span className="rounded-full bg-mint/10 px-2 py-0.5 text-xs font-semibold text-mint dark:bg-mint/20">
+                      自动简介
+                    </span>
+                  ) : null}
+                </span>
                 <textarea
                   className="admin-input mt-1 min-h-20"
                   value={quickAddForm.description}

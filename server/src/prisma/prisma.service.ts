@@ -60,6 +60,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         "nameResolvedAt" DATETIME,
         "url" TEXT NOT NULL,
         "description" TEXT,
+        "resolvedDescription" TEXT,
+        "descriptionResolvedAt" DATETIME,
         "icon" TEXT,
         "iconUrl" TEXT,
         "resolvedIconUrl" TEXT,
@@ -85,6 +87,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
     await this.ensureColumn('App', 'userId', '"userId" INTEGER');
     await this.ensureColumn('App', 'resolvedName', '"resolvedName" TEXT');
     await this.ensureColumn('App', 'nameResolvedAt', '"nameResolvedAt" DATETIME');
+    await this.ensureColumn('App', 'resolvedDescription', '"resolvedDescription" TEXT');
+    await this.ensureColumn('App', 'descriptionResolvedAt', '"descriptionResolvedAt" DATETIME');
     await this.ensureColumn('App', 'iconUrl', '"iconUrl" TEXT');
     await this.ensureColumn('App', 'resolvedIconUrl', '"resolvedIconUrl" TEXT');
     await this.ensureColumn('App', 'iconResolvedAt', '"iconResolvedAt" DATETIME');

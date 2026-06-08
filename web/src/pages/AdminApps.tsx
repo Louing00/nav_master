@@ -8,7 +8,7 @@ import { confirmDelete } from '../components/ConfirmDialog';
 import HealthBadge from '../components/HealthBadge';
 import Toast, { useToast } from '../components/Toast';
 import { useAppMetadataPreview } from '../hooks/useAppMetadataPreview';
-import { appNeedsResolvedName, getAppDisplayName } from '../lib/appName';
+import { appNeedsResolvedMetadata, getAppDisplayDescription, getAppDisplayName } from '../lib/appName';
 import type { NavApp } from '../types/app';
 import type { AdminCategory } from '../types/category';
 
@@ -49,7 +49,7 @@ export default function AdminApps() {
   const [refreshingIconIds, setRefreshingIconIds] = useState<Set<number>>(new Set());
   const [checkingAllHealth, setCheckingAllHealth] = useState(false);
   const [healthCheckProgress, setHealthCheckProgress] = useState<{ checked: number; total: number } | null>(null);
-  const nameRefreshAttempts = useRef<Set<string>>(new Set());
+  const metadataRefreshAttempts = useRef<Set<string>>(new Set());
   const autoDescription = useRef<string | null>(null);
   const { toast, showToast, clearToast } = useToast();
   const metadataPreview = useAppMetadataPreview(form.url, modalOpen);
@@ -80,12 +80,12 @@ export default function AdminApps() {
   }, [metadataPreview.data?.resolvedDescription]);
 
   useEffect(() => {
-    const freshPendingApps = apps.filter(appNeedsResolvedName).filter((app) => {
-      const key = `${app.id}:${app.url}:${app.name || ''}`;
-      if (nameRefreshAttempts.current.has(key)) {
+    const freshPendingApps = apps.filter(appNeedsResolvedMetadata).filter((app) => {
+      const key = `${app.id}:${app.url}:${app.name || ''}:${app.description || ''}`;
+      if (metadataRefreshAttempts.current.has(key)) {
         return false;
       }
-      nameRefreshAttempts.current.add(key);
+      metadataRefreshAttempts.current.add(key);
       return true;
     });
     if (!freshPendingApps.length) {
@@ -100,7 +100,9 @@ export default function AdminApps() {
 
   const filtered = useMemo(() => {
     const q = keyword.trim().toLowerCase();
-    const rows = q ? apps.filter((app) => [getAppDisplayName(app), app.description, ...app.tags].join(' ').toLowerCase().includes(q)) : apps;
+    const rows = q
+      ? apps.filter((app) => [getAppDisplayName(app), getAppDisplayDescription(app), ...app.tags].join(' ').toLowerCase().includes(q))
+      : apps;
     return [...rows].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0) || a.id - b.id);
   }, [apps, keyword]);
 
@@ -130,6 +132,7 @@ export default function AdminApps() {
   }, [categories, filtered]);
 
   const canDragSort = keyword.trim().length === 0;
+  const descriptionIsAuto = Boolean(autoDescription.current && form.description === autoDescription.current);
 
   function groupKey(group: AppGroup) {
     return group.id === null ? 'uncategorized' : String(group.id);
@@ -162,12 +165,12 @@ export default function AdminApps() {
   }
 
   function startEdit(app: NavApp) {
-    autoDescription.current = null;
+    autoDescription.current = app.description?.trim() ? null : app.resolvedDescription?.trim() || null;
     setEditing(app);
     setForm({
       name: app.name,
       url: app.url,
-      description: app.description || '',
+      description: getAppDisplayDescription(app),
       icon: app.icon || '',
       iconUrl: app.iconUrl || '',
       categoryId: app.categoryId || undefined,
@@ -197,6 +200,7 @@ export default function AdminApps() {
     const payload = {
       ...form,
       name: form.name.trim(),
+      description: descriptionIsAuto ? '' : form.description.trim(),
       iconUrl: form.iconUrl.trim() || null,
       categoryId,
       tags: form.tags
@@ -710,7 +714,14 @@ export default function AdminApps() {
                 />
               </label>
               <label className="sm:col-span-2">
-                <span className="admin-label">描述</span>
+                <span className="flex items-center gap-2">
+                  <span className="admin-label">描述</span>
+                  {descriptionIsAuto ? (
+                    <span className="rounded-full bg-mint/10 px-2 py-0.5 text-xs font-semibold text-mint dark:bg-mint/20">
+                      自动简介
+                    </span>
+                  ) : null}
+                </span>
                 <textarea
                   className="admin-input mt-1 min-h-20"
                   value={form.description}

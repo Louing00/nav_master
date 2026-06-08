@@ -34,6 +34,33 @@ const BROWSER_LIKE_HEADERS: Record<string, string> = {
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
 };
 
+const HTML_HEADERS = {
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.6',
+};
+
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_MAX_ITEMS = 200;
+const METADATA_TOTAL_BUDGET_MS = 7000;
+const PAGE_FETCH_MAX_MS = 4200;
+const ICON_BATCH_SIZE = 4;
+
+type PageInfo = {
+  resolvedName: string | null;
+  resolvedDescription: string | null;
+  linkedIconUrls: string[];
+};
+
+export type ResolvedAppMetadata = {
+  resolvedName: string | null;
+  resolvedDescription: string | null;
+  resolvedIconUrl: string | null;
+};
+
+type CacheEntry<T> = {
+  expiresAt: number;
+  value: T;
+};
+
 function mergeBrowserHeaders(headers?: HeadersInit) {
   const merged = new Headers(BROWSER_LIKE_HEADERS);
   if (headers) {
@@ -188,42 +215,87 @@ function unique(values: string[]) {
   return [...new Set(values)];
 }
 
+function normalizeUrlKey(value: string) {
+  try {
+    const url = new URL(value.trim());
+    url.hash = '';
+    return url.href;
+  } catch {
+    return value.trim();
+  }
+}
+
+function remainingBudget(startedAt: number, totalBudgetMs: number) {
+  return Math.max(0, totalBudgetMs - (Date.now() - startedAt));
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 @Injectable()
 export class AppIconService {
-  async resolve(url: string): Promise<string | null> {
-    const candidates = await this.collectCandidates(url);
-    for (const candidate of candidates) {
-      if (await this.isUsableIcon(candidate)) {
-        return candidate;
-      }
-    }
-    return null;
+  private readonly pageCache = new Map<string, CacheEntry<PageInfo>>();
+  private readonly pageInflight = new Map<string, Promise<PageInfo>>();
+  private readonly metadataCache = new Map<string, CacheEntry<ResolvedAppMetadata>>();
+  private readonly metadataInflight = new Map<string, Promise<ResolvedAppMetadata>>();
+
+  async resolve(url: string, options: { force?: boolean } = {}): Promise<string | null> {
+    return (await this.resolveMetadata(url, options)).resolvedIconUrl;
   }
 
-  async resolvePageMetadata(url: string): Promise<{ resolvedName: string | null; resolvedDescription: string | null }> {
-    try {
-      const response = await fetchWithTimeout(url, { method: 'GET' }, 4500);
-      if (!response.ok) {
-        return { resolvedName: null, resolvedDescription: null };
+  async resolveMetadata(url: string, options: { force?: boolean } = {}): Promise<ResolvedAppMetadata> {
+    const key = normalizeUrlKey(url);
+    if (!options.force) {
+      const cached = this.readCache(this.metadataCache, key);
+      if (cached) {
+        return cached;
       }
 
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType && !contentType.includes('html') && !contentType.includes('text/plain')) {
-        return { resolvedName: null, resolvedDescription: null };
+      const inflight = this.metadataInflight.get(key);
+      if (inflight) {
+        return inflight;
       }
-
-      const html = (await response.text()).slice(0, 250_000);
-      return {
-        resolvedName: extractPageName(html),
-        resolvedDescription: extractPageDescription(html),
-      };
-    } catch {
-      return { resolvedName: null, resolvedDescription: null };
     }
+
+    const promise = this.resolveMetadataFresh(url, options.force).then((value) => {
+      this.writeCache(this.metadataCache, key, value);
+      return value;
+    });
+
+    if (!options.force) {
+      this.metadataInflight.set(key, promise);
+      promise.then(
+        () => {
+          if (this.metadataInflight.get(key) === promise) {
+            this.metadataInflight.delete(key);
+          }
+        },
+        () => {
+          if (this.metadataInflight.get(key) === promise) {
+            this.metadataInflight.delete(key);
+          }
+        },
+      );
+    }
+
+    return promise;
+  }
+
+  async resolvePageMetadata(url: string, options: { force?: boolean } = {}): Promise<{ resolvedName: string | null; resolvedDescription: string | null }> {
+    const pageInfo = await this.resolvePageInfo(url, options);
+    return {
+      resolvedName: pageInfo.resolvedName,
+      resolvedDescription: pageInfo.resolvedDescription,
+    };
   }
 
   async resolveName(url: string): Promise<string | null> {
     return (await this.resolvePageMetadata(url)).resolvedName;
+  }
+
+  async resolveDescription(url: string): Promise<string | null> {
+    return (await this.resolvePageMetadata(url)).resolvedDescription;
   }
 
   getBrowserCandidates(url: string) {
@@ -234,10 +306,114 @@ export class AppIconService {
     return this.getBrowserCandidates(url).includes(candidate);
   }
 
-  private async collectCandidates(url: string) {
-    const browserCandidates = this.getBrowserCandidates(url);
-    const linkedCandidates = await this.linkedCandidates(url);
-    return unique([...linkedCandidates, ...browserCandidates]);
+  private async resolveMetadataFresh(url: string, forcePage = false): Promise<ResolvedAppMetadata> {
+    const startedAt = Date.now();
+    const pageInfo = await this.resolvePageInfo(url, { force: forcePage, timeoutMs: Math.min(PAGE_FETCH_MAX_MS, METADATA_TOTAL_BUDGET_MS) });
+    const candidates = unique([...pageInfo.linkedIconUrls, ...this.getBrowserCandidates(url)]);
+    const resolvedIconUrl = await this.findFirstUsableIcon(candidates, remainingBudget(startedAt, METADATA_TOTAL_BUDGET_MS));
+
+    return {
+      resolvedName: pageInfo.resolvedName,
+      resolvedDescription: pageInfo.resolvedDescription,
+      resolvedIconUrl,
+    };
+  }
+
+  private async resolvePageInfo(url: string, options: { force?: boolean; timeoutMs?: number } = {}): Promise<PageInfo> {
+    const key = normalizeUrlKey(url);
+    if (!options.force) {
+      const cached = this.readCache(this.pageCache, key);
+      if (cached) {
+        return cached;
+      }
+
+      const inflight = this.pageInflight.get(key);
+      if (inflight) {
+        return inflight;
+      }
+    }
+
+    const promise = this.fetchPageInfo(url, options.timeoutMs || PAGE_FETCH_MAX_MS).then((value) => {
+      this.writeCache(this.pageCache, key, value);
+      return value;
+    });
+
+    if (!options.force) {
+      this.pageInflight.set(key, promise);
+      promise.then(
+        () => {
+          if (this.pageInflight.get(key) === promise) {
+            this.pageInflight.delete(key);
+          }
+        },
+        () => {
+          if (this.pageInflight.get(key) === promise) {
+            this.pageInflight.delete(key);
+          }
+        },
+      );
+    }
+
+    return promise;
+  }
+
+  private async fetchPageInfo(url: string, timeoutMs: number): Promise<PageInfo> {
+    try {
+      if (timeoutMs < 250) {
+        return this.emptyPageInfo();
+      }
+
+      const response = await fetchWithTimeout(url, { method: 'GET', headers: HTML_HEADERS }, timeoutMs);
+      if (!response.ok) {
+        return this.emptyPageInfo();
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType && !contentType.includes('html') && !contentType.includes('text/plain')) {
+        return this.emptyPageInfo();
+      }
+
+      const html = (await response.text()).slice(0, 250_000);
+      return {
+        resolvedName: extractPageName(html),
+        resolvedDescription: extractPageDescription(html),
+        linkedIconUrls: extractLinkedIcons(html, response.url || url),
+      };
+    } catch {
+      return this.emptyPageInfo();
+    }
+  }
+
+  private emptyPageInfo(): PageInfo {
+    return {
+      resolvedName: null,
+      resolvedDescription: null,
+      linkedIconUrls: [],
+    };
+  }
+
+  private async findFirstUsableIcon(candidates: string[], budgetMs: number) {
+    const startedAt = Date.now();
+    for (let index = 0; index < candidates.length; index += ICON_BATCH_SIZE) {
+      const remaining = remainingBudget(startedAt, budgetMs);
+      if (remaining < 250) {
+        return null;
+      }
+
+      const batch = candidates.slice(index, index + ICON_BATCH_SIZE);
+      const checks = Promise.all(batch.map((candidate) => this.isUsableIcon(candidate, Math.min(remaining, 2200))));
+      const results = await Promise.race([checks, delay(remaining).then(() => null)]);
+      if (!results) {
+        return null;
+      }
+
+      const foundIndex = results.findIndex(Boolean);
+      if (foundIndex >= 0) {
+        return batch[foundIndex];
+      }
+    }
+
+    return null;
   }
 
   private knownCandidates(url: string) {
@@ -258,28 +434,13 @@ export class AppIconService {
     }
   }
 
-  private async linkedCandidates(url: string) {
-    try {
-      const response = await fetchWithTimeout(url, { method: 'GET' }, 4500);
-      if (!response.ok) {
-        return [];
-      }
-
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType && !contentType.includes('html') && !contentType.includes('text/plain')) {
-        return [];
-      }
-
-      const html = await response.text();
-      return extractLinkedIcons(html.slice(0, 250_000), response.url || url);
-    } catch {
-      return [];
+  private async isUsableIcon(url: string, timeoutMs = 2200) {
+    if (timeoutMs < 250) {
+      return false;
     }
-  }
 
-  private async isUsableIcon(url: string) {
     try {
-      const head = await fetchWithTimeout(url, { method: 'HEAD' }, 2500);
+      const head = await fetchWithTimeout(url, { method: 'HEAD' }, Math.min(timeoutMs, 1300));
       if (this.isUsableResponse(head)) {
         return true;
       }
@@ -291,7 +452,7 @@ export class AppIconService {
     }
 
     try {
-      const response = await fetchWithTimeout(url, { method: 'GET' }, 3000);
+      const response = await fetchWithTimeout(url, { method: 'GET' }, Math.min(timeoutMs, 1700));
       return this.isUsableResponse(response);
     } catch {
       return false;
@@ -304,5 +465,36 @@ export class AppIconService {
     }
     const contentType = response.headers.get('content-type') || '';
     return !contentType || contentType.startsWith('image/') || contentType.includes('icon') || contentType.includes('octet-stream');
+  }
+
+  private readCache<T>(cache: Map<string, CacheEntry<T>>, key: string) {
+    const cached = cache.get(key);
+    if (!cached || cached.expiresAt < Date.now()) {
+      cache.delete(key);
+      return null;
+    }
+
+    cache.delete(key);
+    cache.set(key, cached);
+    return cached.value;
+  }
+
+  private writeCache<T>(cache: Map<string, CacheEntry<T>>, key: string, value: T) {
+    if (cache.has(key)) {
+      cache.delete(key);
+    }
+
+    cache.set(key, {
+      expiresAt: Date.now() + CACHE_TTL_MS,
+      value,
+    });
+
+    while (cache.size > CACHE_MAX_ITEMS) {
+      const oldestKey = cache.keys().next().value;
+      if (!oldestKey) {
+        break;
+      }
+      cache.delete(oldestKey);
+    }
   }
 }
