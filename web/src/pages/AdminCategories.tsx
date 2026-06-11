@@ -1,13 +1,15 @@
-import { Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { createCategory, deleteCategory, fetchCategories, updateCategory } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import AdminModal from '../components/AdminModal';
+import CategoryIcon, { CATEGORY_ICON_OPTIONS, resolveCategoryIconKey } from '../components/CategoryIcon';
 import { confirmDelete } from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
 import Toast, { useToast } from '../components/Toast';
 import type { AdminCategory } from '../types/category';
 
-const blank = { name: '', description: '', icon: '◇', sortOrder: 0, visible: true };
+const blank = { name: '', description: '', icon: 'folder', sortOrder: 0, visible: true };
 
 export default function AdminCategories() {
   const [categories, setCategories] = useState<AdminCategory[]>([]);
@@ -56,7 +58,7 @@ export default function AdminCategories() {
     setForm({
       name: category.name,
       description: category.description || '',
-      icon: category.icon || '',
+      icon: resolveCategoryIconKey(category.icon, category.name),
       sortOrder: category.sortOrder,
       visible: category.visible,
     });
@@ -101,15 +103,24 @@ export default function AdminCategories() {
             新增分类
           </button>
         </div>
+        {categories.length === 0 ? (
+          <div className="p-5">
+            <EmptyState title="暂无分类" description="创建第一个分类，用于组织你的应用入口。" />
+          </div>
+        ) : (
+          <>
         <div className="grid gap-3 p-4 md:hidden">
           {categories.map((category) => (
             <article key={category.id} className="rounded-lg border border-black/10 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900/70">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="truncate font-semibold">
-                    {category.icon} {category.name}
-                  </h3>
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                    <CategoryIcon icon={category.icon} name={category.name} size={19} />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="truncate font-semibold">{category.name}</h3>
                   {category.description && <p className="mt-1 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">{category.description}</p>}
+                  </div>
                 </div>
                 <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${category.visible ? 'bg-mint/10 text-mint' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'}`}>
                   {category.visible ? '显示' : '隐藏'}
@@ -144,7 +155,14 @@ export default function AdminCategories() {
             <tbody>
               {categories.map((category) => (
                 <tr key={category.id} className="border-t border-black/10 dark:border-white/10">
-                  <td className="px-5 py-4 font-medium">{category.icon} {category.name}</td>
+                  <td className="px-5 py-4 font-medium">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                        <CategoryIcon icon={category.icon} name={category.name} size={17} />
+                      </span>
+                      {category.name}
+                    </div>
+                  </td>
                   <td className="px-5 py-4">{category._count?.apps || 0}</td>
                   <td className="px-5 py-4">{category.visible ? '显示' : '隐藏'}</td>
                   <td className="px-5 py-4">{category.sortOrder}</td>
@@ -163,6 +181,8 @@ export default function AdminCategories() {
             </tbody>
           </table>
         </div>
+          </>
+        )}
       </section>
 
       {modalOpen && (
@@ -173,7 +193,8 @@ export default function AdminCategories() {
             maxWidth="max-w-xl"
             footer={
               <>
-                <button type="button" className="focus-ring rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={closeModal}>
+                <button type="button" className="focus-ring inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={closeModal}>
+                  <X size={16} />
                   取消
                 </button>
                 <button className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white hover:bg-ink" type="submit">
@@ -190,7 +211,18 @@ export default function AdminCategories() {
               </label>
               <label>
                 <span className="admin-label">图标</span>
-                <input className="admin-input mt-1" value={form.icon} onChange={(event) => setForm({ ...form, icon: event.target.value })} />
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                    <CategoryIcon icon={form.icon} name={form.name} size={19} />
+                  </span>
+                  <select className="admin-input" value={form.icon} onChange={(event) => setForm({ ...form, icon: event.target.value })}>
+                    {CATEGORY_ICON_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </label>
               <label className="sm:col-span-2">
                 <span className="admin-label">描述</span>

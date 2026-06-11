@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import NotFound from './pages/NotFound';
 import AdminLayout from './pages/AdminLayout';
 import AdminApps from './pages/AdminApps';
 import AdminCategories from './pages/AdminCategories';
@@ -27,7 +28,7 @@ export default function App() {
           <Route path="security" element={<AdminSecurity />} />
           <Route path="users" element={<AdminUsers />} />
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
       <FloatingTooltip />
     </>

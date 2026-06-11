@@ -3,8 +3,11 @@ import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'reac
 import { Link, useNavigate } from 'react-router-dom';
 import AdminModal from '../components/AdminModal';
 import AppMetadataPreview from '../components/AppMetadataPreview';
+import BrandMark from '../components/BrandMark';
+import CategoryIcon from '../components/CategoryIcon';
 import CategorySection from '../components/CategorySection';
 import EmptyState from '../components/EmptyState';
+import homeConsoleIllustration from '../assets/illustrations/home-console.svg';
 import { logout } from '../api/auth';
 import { createApp, fetchAdminApps, fetchCategories as fetchAdminCategories } from '../api/admin';
 import { getErrorMessage } from '../api/client';
@@ -412,17 +415,21 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f3ec] text-ink dark:bg-slate-950 dark:text-slate-100">
+    <main className="home-page">
       <header className="px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8">
-        <div className="surface mx-auto flex w-[calc(100vw-2rem)] max-w-7xl flex-col gap-5 overflow-hidden rounded-2xl p-4 shadow-[0_12px_36px_rgba(15,23,42,0.06)] sm:w-full sm:gap-6 sm:rounded-3xl sm:p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="home-surface relative mx-auto flex w-[calc(100vw-2rem)] max-w-7xl flex-col gap-5 overflow-hidden rounded-2xl p-4 sm:w-full sm:gap-6 sm:rounded-3xl sm:p-5">
+          <img
+            src={homeConsoleIllustration}
+            alt=""
+            className="pointer-events-none absolute right-52 top-0 hidden h-28 w-52 select-none object-contain opacity-45 xl:block dark:opacity-25"
+            aria-hidden="true"
+          />
+          <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center text-3xl text-ink dark:text-white sm:h-12 sm:w-12 sm:text-4xl">
-                {settings.logo || '✦'}
-              </div>
+              <BrandMark logo={settings.logo} className="h-11 w-11 sm:h-12 sm:w-12" iconSize={22} />
               <div className="min-w-0 flex-1">
                 <h1 className="truncate text-xl font-semibold sm:text-3xl">{settings.site_title || 'AtlasGate 星渡枢航'}</h1>
-                <p className="mt-1 truncate text-sm font-medium text-slate-600 dark:text-slate-400 sm:line-clamp-none sm:whitespace-normal">
+                <p className="home-muted mt-1 truncate text-sm font-medium sm:line-clamp-none sm:whitespace-normal">
                   {settings.site_subtitle || '个人系统、内网服务与运维入口的统一星图'}
                 </p>
               </div>
@@ -431,10 +438,10 @@ export default function Home() {
               <button
                 type="button"
                 onClick={toggleAllCategories}
-                className={`focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition ${
+                className={`home-control focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition ${
                   allFilteredCollapsed
-                    ? 'bg-ink text-white hover:bg-mint dark:bg-white dark:text-ink'
-                    : 'border border-slate-200 bg-white/40 text-slate-600 hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-white/5 dark:text-slate-300'
+                    ? 'home-control-active'
+                    : ''
                 }`}
                 title={allFilteredCollapsed ? '展开全部分类' : '紧凑显示全部分类'}
                 data-tooltip={allFilteredCollapsed ? '展开全部分类' : '紧凑显示全部分类'}
@@ -444,7 +451,7 @@ export default function Home() {
               </button>
               <Link
                 to="/admin"
-                className="focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white/40 text-slate-600 hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-white/5 dark:text-slate-300"
+                className="home-control focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition"
                 title="后台管理"
                 data-tooltip="后台管理"
               >
@@ -453,7 +460,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setDark((value) => !value)}
-                className="focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl bg-mint text-white shadow-sm hover:bg-ink dark:bg-mint"
+                className="home-control focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition"
                 title="切换主题"
                 data-tooltip="切换主题"
               >
@@ -462,7 +469,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white/40 text-slate-600 hover:border-red-300 hover:text-red-600 dark:border-slate-800 dark:bg-white/5 dark:text-slate-300 dark:hover:border-red-400 dark:hover:text-red-300"
+                className="home-control home-control-danger focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition"
                 title="退出登录"
                 data-tooltip="退出登录"
               >
@@ -473,7 +480,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setDark((value) => !value)}
-                className="focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl bg-mint text-white shadow-sm hover:bg-ink dark:bg-mint"
+                className="home-control focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition"
                 title="切换主题"
                 data-tooltip="切换主题"
               >
@@ -482,7 +489,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen((value) => !value)}
-                className="focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white/60 text-slate-600 shadow-sm hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-white/5 dark:text-slate-300"
+                className="home-control focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition"
                 title={mobileMenuOpen ? '收起菜单' : '更多操作'}
                 data-tooltip={mobileMenuOpen ? '收起菜单' : '更多操作'}
                 aria-expanded={mobileMenuOpen}
@@ -490,11 +497,11 @@ export default function Home() {
                 {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
               </button>
               {mobileMenuOpen && (
-                <div className="absolute right-0 top-12 z-20 w-52 overflow-hidden rounded-lg border border-black/10 bg-white/95 p-1.5 text-sm shadow-xl shadow-slate-900/10 backdrop-blur dark:border-white/10 dark:bg-slate-900/95">
+                <div className="home-menu absolute right-0 top-12 z-20 w-52 overflow-hidden rounded-lg p-1.5 text-sm">
                   <button
                     type="button"
                     onClick={toggleAllAndCloseMenu}
-                    className="focus-ring flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                    className="home-menu-item focus-ring flex w-full items-center gap-3 rounded-md px-3 py-2 text-left"
                   >
                     <LayoutGrid size={17} />
                     {allFilteredCollapsed ? '展开全部分类' : '紧凑显示全部分类'}
@@ -502,7 +509,7 @@ export default function Home() {
                   <Link
                     to="/admin"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="focus-ring flex items-center gap-3 rounded-md px-3 py-2 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                    className="home-menu-item focus-ring flex items-center gap-3 rounded-md px-3 py-2"
                   >
                     <Shield size={17} />
                     后台管理
@@ -510,7 +517,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="focus-ring flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-slate-700 hover:bg-red-50 hover:text-red-600 dark:text-slate-200 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                    className="home-menu-item home-menu-danger focus-ring flex w-full items-center gap-3 rounded-md px-3 py-2 text-left"
                   >
                     <LogOut size={17} />
                     退出登录
@@ -520,9 +527,9 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_330px]">
-            <label className="flex min-h-14 min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] dark:border-slate-800 dark:bg-slate-950/60 dark:shadow-none">
-              <Search size={22} className="shrink-0 text-slate-500" />
+          <div className="relative z-10 grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_330px]">
+            <label className="home-field flex min-h-14 min-w-0 items-center gap-3 rounded-2xl px-4 transition">
+              <Search size={22} className="home-muted shrink-0" />
               <input
                 value={keyword}
                 onChange={(event) => setKeyword(event.target.value)}
@@ -531,19 +538,19 @@ export default function Home() {
               />
             </label>
             <div className="grid min-w-0 grid-cols-3 gap-2">
-              <div className="min-w-0 rounded-xl bg-slate-50/80 px-2 py-2.5 text-center dark:bg-slate-950/60 sm:rounded-2xl sm:px-3 sm:py-3">
-                <div className="text-lg font-bold leading-none text-ink dark:text-white sm:text-2xl">{totalAppCount}</div>
-                <div className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400 sm:text-xs">入口</div>
+              <div className="home-stat min-w-0 rounded-xl px-2 py-2.5 text-center sm:rounded-2xl sm:px-3 sm:py-3">
+                <div className="text-lg font-bold leading-none sm:text-2xl">{totalAppCount}</div>
+                <div className="home-muted mt-1 text-[11px] font-semibold sm:text-xs">入口</div>
               </div>
-              <div className="min-w-0 rounded-xl bg-slate-50/80 px-2 py-2.5 text-center dark:bg-slate-950/60 sm:rounded-2xl sm:px-3 sm:py-3">
+              <div className="home-stat min-w-0 rounded-xl px-2 py-2.5 text-center sm:rounded-2xl sm:px-3 sm:py-3">
                 <div className="text-lg font-bold leading-none text-emerald-700 dark:text-emerald-300 sm:text-2xl">{healthyAppCount}</div>
-                <div className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400 sm:text-xs">正常</div>
+                <div className="home-muted mt-1 text-[11px] font-semibold sm:text-xs">正常</div>
               </div>
               <button
                 type="button"
                 onClick={focusHealthIssue}
                 disabled={attentionAppCount === 0}
-                className="focus-ring min-w-0 rounded-xl bg-slate-50/80 px-2 py-2.5 text-center transition enabled:hover:bg-amber-50 enabled:hover:ring-1 enabled:hover:ring-amber-200 disabled:cursor-default dark:bg-slate-950/60 dark:enabled:hover:bg-amber-950/30 dark:enabled:hover:ring-amber-900 sm:rounded-2xl sm:px-3 sm:py-3"
+                className="home-stat home-stat-attention focus-ring min-w-0 rounded-xl px-2 py-2.5 text-center transition disabled:cursor-default sm:rounded-2xl sm:px-3 sm:py-3"
                 title={`异常 ${unhealthyAppCount} 个，访问受限 ${restrictedAppCount} 个`}
                 data-tooltip={`异常 ${unhealthyAppCount} 个，访问受限 ${restrictedAppCount} 个`}
               >
@@ -553,17 +560,17 @@ export default function Home() {
                       ? 'text-red-600 dark:text-red-300'
                       : restrictedAppCount > 0
                         ? 'text-amber-700 dark:text-amber-300'
-                        : 'text-slate-500 dark:text-slate-400'
+                        : 'home-muted'
                   }`}
                 >
                   {attentionAppCount}
                 </div>
-                <div className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400 sm:text-xs">需关注</div>
+                <div className="home-muted mt-1 text-[11px] font-semibold sm:text-xs">需关注</div>
               </button>
             </div>
           </div>
           {filtered.length > 0 && (
-            <nav aria-label="分类快捷定位" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+            <nav aria-label="分类快捷定位" className="relative z-10 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
               <div className="flex min-w-max gap-2 sm:min-w-0 sm:flex-wrap">
                 {filtered.map((category) => {
                   const active = activeShortcutCategoryId === category.id;
@@ -572,21 +579,19 @@ export default function Home() {
                       key={category.id}
                       type="button"
                       onClick={() => scrollToCategory(category.id)}
-                      className={`focus-ring inline-flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-sm font-semibold transition ${
+                      className={`home-shortcut focus-ring inline-flex h-9 shrink-0 items-center gap-2 rounded-full px-3 text-sm font-semibold transition ${
                         active
-                          ? 'border-mint bg-mint text-white shadow-sm'
-                          : 'border-slate-200 bg-white/45 text-slate-600 hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-white/5 dark:text-slate-300'
+                          ? 'home-shortcut-active'
+                          : ''
                       }`}
                       title={`定位到${category.name}`}
                       data-tooltip={`定位到${category.name}`}
                       aria-current={active ? 'true' : undefined}
                     >
-                      <span className="text-base leading-none">{category.icon || '·'}</span>
+                      <CategoryIcon icon={category.icon} name={category.name} size={15} />
                       <span className="max-w-28 truncate sm:max-w-40">{category.name}</span>
                       <span
-                        className={`rounded-full px-1.5 py-0.5 text-xs ${
-                          active ? 'bg-white/20 text-white' : 'bg-slate-900/5 text-slate-500 dark:bg-white/10 dark:text-slate-400'
-                        }`}
+                        className={`rounded-full px-1.5 py-0.5 text-xs ${active ? 'bg-black/5' : 'bg-slate-900/5 dark:bg-white/10'}`}
                       >
                         {category.apps.length}
                       </span>
@@ -627,13 +632,13 @@ export default function Home() {
         )}
       </div>
 
-      <footer className="mx-auto max-w-7xl px-4 py-8 text-sm text-slate-500 sm:px-6 lg:px-8 dark:text-slate-400">
+      <footer className="home-muted mx-auto max-w-7xl px-4 py-8 text-sm sm:px-6 lg:px-8">
         {settings.footer_text || 'Powered by AtlasGate'}
       </footer>
       <button
         type="button"
         onClick={scrollToTop}
-        className={`focus-ring fixed bottom-20 right-5 z-40 inline-flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 bg-white/90 text-slate-600 shadow-lg shadow-slate-900/10 backdrop-blur transition hover:-translate-y-0.5 hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-slate-900/90 dark:text-slate-300 sm:bottom-6 ${
+        className={`home-floating-control focus-ring fixed bottom-20 right-5 z-40 inline-flex h-11 w-11 items-center justify-center rounded-lg transition hover:-translate-y-0.5 sm:bottom-6 ${
           showBackToTop ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none translate-y-2 opacity-0'
         }`}
         title="回到顶部"
@@ -649,17 +654,19 @@ export default function Home() {
           <AdminModal
             title="新增应用"
             onClose={closeQuickAdd}
+            panelClassName="home-modal-panel"
             footer={
               <>
                 <button
                   type="button"
-                  className="focus-ring rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  className="focus-ring inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                   onClick={closeQuickAdd}
                 >
+                  <X size={16} />
                   取消
                 </button>
                 <button
-                  className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60"
+                  className="home-primary focus-ring inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
                   type="submit"
                   disabled={quickAddSaving}
                 >
@@ -707,7 +714,7 @@ export default function Home() {
                 <span className="flex items-center gap-2">
                   <span className="admin-label">描述</span>
                   {quickAddDescriptionIsAuto ? (
-                    <span className="rounded-full bg-mint/10 px-2 py-0.5 text-xs font-semibold text-mint dark:bg-mint/20">
+                    <span className="home-accent-badge rounded-full px-2 py-0.5 text-xs font-semibold">
                       自动简介
                     </span>
                   ) : null}
@@ -723,7 +730,7 @@ export default function Home() {
                 />
               </label>
               <label>
-                <span className="admin-label">图标字符</span>
+                <span className="admin-label">图标字符（字母或数字）</span>
                 <input className="admin-input mt-1" value={quickAddForm.icon} onChange={(event) => setQuickAddForm({ ...quickAddForm, icon: event.target.value })} />
               </label>
               <label>

@@ -1,4 +1,4 @@
-import { Save } from 'lucide-react';
+import { Activity, GripVertical, Image, Save } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { fetchSettings, updateSettings } from '../api/admin';
 import type { SiteSettings } from '../types/setting';
@@ -43,8 +43,14 @@ export default function AdminSettings() {
           <input className="admin-input mt-1" value={settings.site_subtitle || ''} onChange={(event) => setSettings({ ...settings, site_subtitle: event.target.value })} />
         </label>
         <label>
-          <span className="admin-label">Logo</span>
-          <input className="admin-input mt-1" value={settings.logo || ''} onChange={(event) => setSettings({ ...settings, logo: event.target.value })} />
+          <span className="admin-label">品牌缩写</span>
+          <input
+            className="admin-input mt-1"
+            value={settings.logo || ''}
+            onChange={(event) => setSettings({ ...settings, logo: event.target.value })}
+            maxLength={2}
+            placeholder="最多 2 个字母、数字或汉字"
+          />
         </label>
         <label>
           <span className="admin-label">页脚文本</span>
@@ -52,9 +58,14 @@ export default function AdminSettings() {
         </label>
         <div className="rounded-lg border border-black/10 bg-[#f6f3ec]/70 p-4 dark:border-white/10 dark:bg-slate-950/50">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="font-semibold">新增时自动获取图标</h2>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">开启后，仅在新增应用或修改 URL 时尝试获取一次图标；首页刷新不会自动改图标。</p>
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                <Image size={19} strokeWidth={1.8} />
+              </span>
+              <div>
+                <h2 className="font-semibold">新增时自动获取图标</h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">开启后，仅在新增应用或修改 URL 时尝试获取一次图标；首页刷新不会自动改图标。</p>
+              </div>
             </div>
             <button
               type="button"
@@ -78,9 +89,14 @@ export default function AdminSettings() {
         </div>
         <div className="rounded-lg border border-black/10 bg-[#f6f3ec]/70 p-4 dark:border-white/10 dark:bg-slate-950/50">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="font-semibold">首页快捷排序</h2>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">开启后可在首页同一分类内拖动卡片调整入口顺序。</p>
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                <GripVertical size={19} strokeWidth={1.8} />
+              </span>
+              <div>
+                <h2 className="font-semibold">首页快捷排序</h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">开启后可在首页同一分类内拖动卡片调整入口顺序。</p>
+              </div>
             </div>
             <button
               type="button"
@@ -99,9 +115,14 @@ export default function AdminSettings() {
         </div>
         <div className="rounded-lg border border-black/10 bg-[#f6f3ec]/70 p-4 dark:border-white/10 dark:bg-slate-950/50">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="font-semibold">自动健康检查</h2>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">后台按设置间隔检查已启用健康检查的应用。</p>
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                <Activity size={19} strokeWidth={1.8} />
+              </span>
+              <div>
+                <h2 className="font-semibold">自动健康检查</h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">后台按设置间隔检查已启用健康检查的应用。</p>
+              </div>
             </div>
             <button
               type="button"

@@ -1,9 +1,10 @@
-import { Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Save, Trash2, UserRound, X } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { createUser, deleteUser, fetchUsers, updateUser, type AdminUser } from '../api/users';
 import { getErrorMessage } from '../api/client';
 import AdminModal from '../components/AdminModal';
 import { confirmDelete } from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
 import Toast, { useToast } from '../components/Toast';
 
 const blank = { username: '', password: '', isAdmin: false };
@@ -100,13 +101,24 @@ export default function AdminUsers() {
           </button>
         </div>
         {error && !modalOpen && <p className="mx-5 mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200">{error}</p>}
+        {users.length === 0 ? (
+          <div className="p-5">
+            <EmptyState title="暂无用户" description="创建用户后，可为每个账号维护独立的导航空间。" />
+          </div>
+        ) : (
+          <>
         <div className="grid gap-3 p-4 md:hidden">
           {users.map((user) => (
             <article key={user.id} className="rounded-lg border border-black/10 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900/70">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="truncate font-semibold">{user.username}</h3>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{user.categoryCount} 分类 / {user.appCount} 应用</p>
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                    <UserRound size={19} strokeWidth={1.8} />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="truncate font-semibold">{user.username}</h3>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{user.categoryCount} 分类 / {user.appCount} 应用</p>
+                  </div>
                 </div>
                 <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${user.isAdmin ? 'bg-mint/10 text-mint' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'}`}>
                   {user.isAdmin ? '管理员' : '普通用户'}
@@ -138,7 +150,14 @@ export default function AdminUsers() {
             <tbody>
               {users.map((user) => (
                 <tr key={user.id} className="border-t border-black/10 dark:border-white/10">
-                  <td className="px-5 py-4 font-medium">{user.username}</td>
+                  <td className="px-5 py-4 font-medium">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                        <UserRound size={17} strokeWidth={1.8} />
+                      </span>
+                      {user.username}
+                    </div>
+                  </td>
                   <td className="px-5 py-4">{user.isAdmin ? '管理员' : '普通用户'}</td>
                   <td className="px-5 py-4 text-slate-500">{user.categoryCount} 分类 / {user.appCount} 应用</td>
                   <td className="px-5 py-4 text-slate-500">{new Date(user.createdAt).toLocaleString()}</td>
@@ -157,6 +176,8 @@ export default function AdminUsers() {
             </tbody>
           </table>
         </div>
+          </>
+        )}
       </section>
 
       {modalOpen && (
@@ -167,7 +188,8 @@ export default function AdminUsers() {
             maxWidth="max-w-xl"
             footer={
               <>
-                <button type="button" className="focus-ring rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={closeModal}>
+                <button type="button" className="focus-ring inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={closeModal}>
+                  <X size={16} />
                   取消
                 </button>
                 <button className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white hover:bg-ink" type="submit">

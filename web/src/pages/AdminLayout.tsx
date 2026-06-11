@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { logout, me } from '../api/auth';
 import { fetchPublicConfig } from '../api/public';
+import BrandMark from '../components/BrandMark';
 import type { SiteSettings } from '../types/setting';
 
 const navItems = [
@@ -39,7 +40,7 @@ export default function AdminLayout() {
         <aside className="border-b border-black/10 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900 lg:border-b-0 lg:border-r">
           <div className="flex items-center justify-between gap-3 px-2 py-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center text-3xl text-ink dark:text-white">{settings.logo || '✦'}</div>
+              <BrandMark logo={settings.logo} className="h-10 w-10" iconSize={19} />
               <div className="min-w-0">
                 <p className="truncate font-semibold">{settings.site_title || '星渡枢航'}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">{currentUser?.username || 'Admin'}</p>

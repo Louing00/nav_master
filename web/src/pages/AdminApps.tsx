@@ -1,10 +1,13 @@
-import { ChevronDown, ChevronRight, GripVertical, Image, Pencil, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical, Image, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { checkAppHealth, createApp, deleteApp, fetchAdminApps, fetchCategories, refreshAppIcon, updateApp } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import AdminModal from '../components/AdminModal';
+import AppIcon from '../components/AppIcon';
 import AppMetadataPreview from '../components/AppMetadataPreview';
+import CategoryIcon from '../components/CategoryIcon';
 import { confirmDelete } from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
 import HealthBadge from '../components/HealthBadge';
 import Toast, { useToast } from '../components/Toast';
 import { useAppMetadataPreview } from '../hooks/useAppMetadataPreview';
@@ -122,7 +125,7 @@ export default function AdminApps() {
       categoryGroups.push({
         id: null,
         name: '未分类',
-        icon: '·',
+        icon: 'folder',
         description: '尚未归类的应用',
         apps: uncategorized,
       });
@@ -413,7 +416,10 @@ export default function AdminApps() {
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">管理当前用户的导航入口</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <input className="admin-input sm:w-64" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="搜索应用" />
+            <label className="relative block sm:w-64">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input className="admin-input w-full pl-9" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="搜索应用" />
+            </label>
             <button
               type="button"
               onClick={runAllHealthChecks}
@@ -446,7 +452,9 @@ export default function AdminApps() {
                 <div className="flex items-center justify-between gap-4 border-b border-black/10 px-4 py-3 dark:border-white/10">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-lg text-mint">{group.icon || '·'}</span>
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                        <CategoryIcon icon={group.icon} name={group.name} size={17} />
+                      </span>
                       <h2 className="font-semibold">{group.name}</h2>
                       <button
                         type="button"
@@ -470,11 +478,12 @@ export default function AdminApps() {
                       {group.apps.map((app) => (
                         <article key={app.id} className="rounded-lg border border-black/10 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900/70">
                           <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <h3 className="truncate font-semibold">
-                                {app.icon} {getAppDisplayName(app)}
-                              </h3>
-                              <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">{app.url}</p>
+                            <div className="flex min-w-0 items-start gap-3">
+                              <AppIcon app={app} compact />
+                              <div className="min-w-0">
+                                <h3 className="truncate font-semibold">{getAppDisplayName(app)}</h3>
+                                <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">{app.url}</p>
+                              </div>
                             </div>
                             <HealthBadge app={app} />
                           </div>
@@ -590,7 +599,12 @@ export default function AdminApps() {
                                 <GripVertical size={17} />
                               </span>
                             </td>
-                            <td className="px-4 py-4 font-medium">{app.icon} {getAppDisplayName(app)}</td>
+                            <td className="px-4 py-4 font-medium">
+                              <div className="flex items-center gap-3">
+                                <AppIcon app={app} compact />
+                                <span className="truncate">{getAppDisplayName(app)}</span>
+                              </div>
+                            </td>
                             <td className="max-w-xs truncate px-4 py-4 text-slate-500">{app.url}</td>
                             <td className="px-4 py-4">
                               <HealthBadge app={app} />
@@ -655,9 +669,10 @@ export default function AdminApps() {
             );
           })}
           {groupedApps.length === 0 && (
-            <div className="rounded-lg border border-dashed border-black/15 px-6 py-10 text-center text-sm text-slate-500 dark:border-white/15 dark:text-slate-400">
-              暂无应用
-            </div>
+            <EmptyState
+              title={keyword.trim() ? '没有匹配的应用' : '暂无应用'}
+              description={keyword.trim() ? '清空搜索或尝试其他关键词。' : '创建第一个应用入口，开始搭建导航页。'}
+            />
           )}
         </div>
       </section>
@@ -669,7 +684,8 @@ export default function AdminApps() {
             onClose={closeModal}
             footer={
               <>
-                <button type="button" className="focus-ring rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={closeModal}>
+                <button type="button" className="focus-ring inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={closeModal}>
+                  <X size={16} />
                   取消
                 </button>
                 <button className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white hover:bg-ink" type="submit">
@@ -733,7 +749,7 @@ export default function AdminApps() {
                 />
               </label>
               <label>
-                <span className="admin-label">图标字符</span>
+                <span className="admin-label">图标字符（字母或数字）</span>
                 <input className="admin-input mt-1" value={form.icon} onChange={(event) => setForm({ ...form, icon: event.target.value })} />
               </label>
               <label>

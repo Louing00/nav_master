@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight, Plus, RefreshCw } from 'lucide-react';
 import type { DragEvent } from 'react';
 import AppCard from './AppCard';
+import CategoryIcon from './CategoryIcon';
 import type { NavCategory } from '../types/app';
 
 type Props = {
@@ -41,14 +42,14 @@ export default function CategorySection({
       id={`category-${category.id}`}
       className="mx-auto w-[calc(100vw-2rem)] max-w-7xl scroll-mt-5 py-3 sm:w-[calc(100vw-3rem)] sm:py-4 lg:w-[calc(100vw-4rem)]"
     >
-      <div className="surface grid gap-4 rounded-2xl p-4 shadow-[0_8px_28px_rgba(15,23,42,0.05)] sm:rounded-3xl sm:p-5 lg:grid-cols-[220px_1fr]">
+      <div className="home-surface grid gap-4 rounded-2xl p-4 sm:rounded-3xl sm:p-5 lg:grid-cols-[220px_1fr]">
         <div className="flex min-w-0 items-start justify-between gap-4 lg:block">
           <div className="min-w-0">
-            <span className="mb-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-mint/10 text-2xl text-mint dark:bg-mint/20">
-              {category.icon || '·'}
+            <span className="home-category-icon mb-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl">
+              <CategoryIcon icon={category.icon} name={category.name} size={22} />
             </span>
-            <h2 className="min-w-0 truncate text-xl font-semibold text-ink dark:text-white">{category.name}</h2>
-            <p className="mt-2 line-clamp-2 text-sm font-medium leading-6 text-slate-600 dark:text-slate-400">
+            <h2 className="min-w-0 truncate text-xl font-semibold">{category.name}</h2>
+            <p className="home-muted mt-2 line-clamp-2 text-sm font-medium leading-6">
               {category.description || `${category.apps.length} 个入口，按当前排序展示`}
             </p>
           </div>
@@ -56,7 +57,7 @@ export default function CategorySection({
             <button
               type="button"
               onClick={onHealthCheck}
-              className="focus-ring inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/45 text-slate-500 transition hover:border-mint/40 hover:text-mint disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-800 dark:bg-white/5 dark:text-slate-400"
+              className="home-control focus-ring inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition disabled:cursor-not-allowed disabled:opacity-45"
               title={checkingHealth ? '正在检查本分类' : '检查本分类'}
               data-tooltip={checkingHealth ? '正在检查本分类' : '检查本分类'}
               disabled={checkingHealth || category.apps.length === 0}
@@ -66,7 +67,7 @@ export default function CategorySection({
             <button
               type="button"
               onClick={() => onCollapsedChange(!collapsed)}
-              className="focus-ring inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/45 text-slate-500 transition hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-white/5 dark:text-slate-400"
+              className="home-control focus-ring inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition"
               title={collapsed ? '展开分类' : '折叠分类'}
               data-tooltip={collapsed ? '展开分类' : '折叠分类'}
               aria-expanded={!collapsed}
@@ -76,7 +77,7 @@ export default function CategorySection({
             <button
               type="button"
               onClick={onAddApp}
-              className="focus-ring inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white/45 px-2.5 text-sm font-semibold text-slate-600 transition hover:border-mint/40 hover:text-mint dark:border-slate-800 dark:bg-white/5 dark:text-slate-300"
+              className="home-control focus-ring inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold transition"
               title="新增入口"
               data-tooltip="新增入口"
             >
@@ -92,7 +93,7 @@ export default function CategorySection({
               id={`app-${app.id}`}
               className={`relative h-full rounded-lg transition ${
                 sortingAppId === app.id ? 'scale-[0.99] opacity-60' : ''
-              } ${dragOverAppId === app.id ? 'ring-2 ring-mint/50 ring-offset-2 ring-offset-[#f6f3ec] dark:ring-offset-slate-950' : ''}`}
+              } ${dragOverAppId === app.id ? 'home-drag-over ring-2 ring-offset-2' : ''}`}
               draggable={quickSortEnabled && !sortSaving}
               onDragStart={(event) => onAppDragStart?.(event, app.id)}
               onDragEnter={(event) => onAppDragOver?.(event, app.id)}

@@ -21,18 +21,18 @@ export default function AppCard({ app, compact = false, sortMode = false }: Prop
         href={app.url}
         target={app.openInNewTab ? '_blank' : '_self'}
         rel="noreferrer"
-        className={`surface focus-ring group flex min-h-14 items-center gap-3 overflow-hidden rounded-xl bg-slate-50/80 px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:border-mint/30 hover:bg-white hover:shadow-[0_8px_24px_rgba(15,23,42,0.08)] dark:bg-slate-950/40 dark:hover:bg-slate-900 ${sortClassName}`}
+        className={`home-card focus-ring group flex min-h-14 items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 transition hover:-translate-y-0.5 ${sortClassName}`}
         title="打开系统"
       >
         <AppIcon app={app} compact />
-        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-ink dark:text-white sm:text-base">{displayName}</h3>
+        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold sm:text-base">{displayName}</h3>
         <HealthBadge app={app} compact />
       </a>
     );
   }
 
   return (
-    <article className={`surface group h-full min-h-36 overflow-hidden rounded-2xl bg-slate-50/80 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:border-mint/30 hover:bg-white hover:shadow-[0_12px_36px_rgba(15,23,42,0.08)] dark:bg-slate-950/40 dark:hover:bg-slate-900/90 ${sortClassName}`}>
+    <article className={`home-card group h-full min-h-36 overflow-hidden rounded-2xl transition hover:-translate-y-0.5 ${sortClassName}`}>
       <a
         href={app.url}
         target={app.openInNewTab ? '_blank' : '_self'}
@@ -43,10 +43,10 @@ export default function AppCard({ app, compact = false, sortMode = false }: Prop
           <AppIcon app={app} />
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-2">
-              <h3 className="truncate text-base font-semibold text-ink dark:text-white sm:text-lg">{displayName}</h3>
+              <h3 className="truncate text-base font-semibold sm:text-lg">{displayName}</h3>
               <HealthBadge app={app} quiet />
             </div>
-            <p className="mt-1 line-clamp-1 max-w-full text-sm font-medium leading-6 text-slate-600 [overflow-wrap:anywhere] dark:text-slate-300 sm:mt-2 sm:line-clamp-2">
+            <p className="home-muted mt-1 line-clamp-1 max-w-full text-sm font-medium leading-6 [overflow-wrap:anywhere] sm:mt-2 sm:line-clamp-2">
               {displayDescription}
             </p>
           </div>
@@ -57,14 +57,14 @@ export default function AppCard({ app, compact = false, sortMode = false }: Prop
             {app.tags.slice(0, 3).map((tag) => (
               <span
                 key={tag}
-                className="max-w-full truncate rounded-full bg-ember/10 px-2.5 py-1 text-xs font-semibold text-ember dark:bg-ember/15 dark:text-orange-200"
+                className="home-tag max-w-full truncate rounded-full px-2.5 py-1 text-xs font-semibold"
               >
                 {tag}
               </span>
             ))}
           </div>
           <span
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition group-hover:bg-mint group-hover:text-white dark:text-slate-500"
+            className="home-open-action inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition"
             data-tooltip="打开系统"
           >
             <ExternalLink size={18} />

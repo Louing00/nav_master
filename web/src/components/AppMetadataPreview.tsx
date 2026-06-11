@@ -1,7 +1,7 @@
 import { LoaderCircle, RefreshCw } from 'lucide-react';
 import type { AppMetadataPreview as Metadata } from '../api/admin';
 import { getAppDisplayName, isFallbackName } from '../lib/appName';
-import AppIcon from './AppIcon';
+import AppIcon, { isUsableTextIcon } from './AppIcon';
 
 type Props = {
   url: string;
@@ -39,7 +39,7 @@ export default function AppMetadataPreview({
     resolvedIconUrl: metadata?.resolvedIconUrl,
   };
   const manualName = Boolean(name.trim() && !isFallbackName(name, url));
-  const manualIcon = Boolean(iconUrl.trim() || (icon.trim() && icon.trim() !== '⌁'));
+  const manualIcon = Boolean(iconUrl.trim() || isUsableTextIcon(icon));
 
   return (
     <div
