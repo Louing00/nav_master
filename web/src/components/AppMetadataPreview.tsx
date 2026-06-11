@@ -43,18 +43,18 @@ export default function AppMetadataPreview({
 
   return (
     <div
-      className="flex min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/50"
+      className="flex min-w-0 items-center gap-3 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-secondary)] p-3"
       aria-live="polite"
     >
       <AppIcon app={app} />
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate font-semibold text-ink dark:text-white">{getAppDisplayName(app)}</p>
-          <span className="shrink-0 text-xs font-medium text-slate-400">
+          <p className="truncate font-semibold text-[var(--admin-text)]">{getAppDisplayName(app)}</p>
+          <span className="shrink-0 text-xs font-medium text-[var(--admin-faint)]">
             {manualName ? '手动名称' : metadata?.resolvedName ? '自动名称' : ''}
           </span>
         </div>
-        <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+        <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-[var(--admin-muted)]">
           {loading ? (
             <>
               <LoaderCircle size={13} className="animate-spin" />
@@ -66,7 +66,7 @@ export default function AppMetadataPreview({
               <button
                 type="button"
                 onClick={onRetry}
-                className="focus-ring inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
+                className="admin-icon-button h-6 w-6"
                 title="重新读取"
                 data-tooltip="重新读取"
               >
@@ -83,7 +83,7 @@ export default function AppMetadataPreview({
           )}
         </div>
         {metadata?.resolvedDescription ? (
-          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--admin-muted)]">
             {metadata.resolvedDescription}
           </p>
         ) : null}

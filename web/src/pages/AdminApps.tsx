@@ -1,8 +1,9 @@
-import { ChevronDown, ChevronRight, GripVertical, Image, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical, Image, LayoutGrid, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { checkAppHealth, createApp, deleteApp, fetchAdminApps, fetchCategories, refreshAppIcon, updateApp } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import AdminModal from '../components/AdminModal';
+import AdminPageHeader from '../components/AdminPageHeader';
 import AppIcon from '../components/AppIcon';
 import AppMetadataPreview from '../components/AppMetadataPreview';
 import CategoryIcon from '../components/CategoryIcon';
@@ -409,21 +410,21 @@ export default function AdminApps() {
 
   return (
     <div className="grid gap-6">
-      <section className="surface overflow-hidden rounded-lg">
-        <div className="flex flex-col gap-3 border-b border-black/10 p-5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">应用列表</h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">管理当前用户的导航入口</p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <section className="admin-panel overflow-hidden rounded-lg">
+        <AdminPageHeader
+          icon={LayoutGrid}
+          title="应用管理"
+          description={`集中维护导航入口、健康状态与展示顺序，共 ${apps.length} 个应用`}
+          actions={
+            <>
             <label className="relative block sm:w-64">
-              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--admin-faint)]" />
               <input className="admin-input w-full pl-9" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="搜索应用" />
             </label>
             <button
               type="button"
               onClick={runAllHealthChecks}
-              className="focus-ring inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-mint hover:text-mint disabled:cursor-not-allowed disabled:opacity-45 dark:border-slate-700 dark:text-slate-300"
+              className="admin-secondary-button"
               title={checkingAllHealth && healthCheckProgress ? `正在检查 ${healthCheckProgress.checked}/${healthCheckProgress.total}` : '批量检查'}
               data-tooltip={checkingAllHealth && healthCheckProgress ? `正在检查 ${healthCheckProgress.checked}/${healthCheckProgress.total}` : '批量检查'}
               disabled={checkingAllHealth || checkingAppIds.size > 0}
@@ -434,13 +435,14 @@ export default function AdminApps() {
             <button
               type="button"
               onClick={startCreate}
-              className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-mint px-3 py-2 text-sm font-semibold text-white hover:bg-ink"
+              className="admin-primary-button"
             >
               <Plus size={16} />
               新增应用
             </button>
-          </div>
-        </div>
+            </>
+          }
+        />
         {actionError && <p className="mx-5 mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200">{actionError}</p>}
         {!canDragSort && <p className="mx-5 mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">清空搜索后可拖拽排序。</p>}
         <div className="grid gap-5 p-5">
@@ -448,18 +450,18 @@ export default function AdminApps() {
             const collapsed = collapsedGroupKeys.has(groupKey(group));
 
             return (
-              <section key={group.id ?? 'uncategorized'} className="overflow-hidden rounded-lg border border-black/10 bg-white/70 dark:border-white/10 dark:bg-slate-950/40">
-                <div className="flex items-center justify-between gap-4 border-b border-black/10 px-4 py-3 dark:border-white/10">
+              <section key={group.id ?? 'uncategorized'} className="admin-section">
+                <div className="admin-section-header">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                      <span className="admin-icon-tile h-9 w-9">
                         <CategoryIcon icon={group.icon} name={group.name} size={17} />
                       </span>
-                      <h2 className="font-semibold">{group.name}</h2>
+                      <h2 className="font-semibold text-[var(--admin-text)]">{group.name}</h2>
                       <button
                         type="button"
                         onClick={() => toggleGroup(group)}
-                        className="focus-ring inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-mint dark:text-slate-400 dark:hover:bg-slate-900"
+                        className="admin-icon-button h-7 w-7"
                         title={collapsed ? '展开分类' : '折叠分类'}
                         data-tooltip={collapsed ? '展开分类' : '折叠分类'}
                         aria-expanded={!collapsed}
@@ -467,22 +469,22 @@ export default function AdminApps() {
                         {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                       </button>
                     </div>
-                    {group.description && !collapsed && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{group.description}</p>}
+                    {group.description && !collapsed && <p className="mt-1 text-xs text-[var(--admin-muted)]">{group.description}</p>}
                   </div>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">{group.apps.length} 个应用</span>
+                  <span className="admin-status-neutral shrink-0 px-2.5 py-1 text-xs font-medium">{group.apps.length} 个应用</span>
                 </div>
 
                 {!collapsed && (
                   <>
                     <div className="grid gap-3 p-3 md:hidden">
                       {group.apps.map((app) => (
-                        <article key={app.id} className="rounded-lg border border-black/10 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900/70">
+                        <article key={app.id} className="admin-mobile-card">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex min-w-0 items-start gap-3">
                               <AppIcon app={app} compact />
                               <div className="min-w-0">
                                 <h3 className="truncate font-semibold">{getAppDisplayName(app)}</h3>
-                                <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">{app.url}</p>
+                                <p className="mt-1 truncate text-sm text-[var(--admin-muted)]">{app.url}</p>
                               </div>
                             </div>
                             <HealthBadge app={app} />
@@ -490,7 +492,7 @@ export default function AdminApps() {
                           {app.tags.length > 0 && (
                             <div className="mt-3 flex flex-wrap gap-2">
                               {app.tags.slice(0, 3).map((tag) => (
-                                <span key={tag} className="rounded-full bg-ember/10 px-2.5 py-1 text-xs font-medium text-ember dark:bg-ember/20">
+                                <span key={tag} className="admin-status-neutral px-2.5 py-1 text-xs font-medium">
                                   {tag}
                                 </span>
                               ))}
@@ -517,7 +519,7 @@ export default function AdminApps() {
                             <div className="flex justify-end gap-2">
                               <button
                                 type="button"
-                                className="focus-ring rounded-md p-2 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                className="admin-icon-button disabled:cursor-not-allowed disabled:opacity-40"
                                 onClick={() => runIconRefresh(app)}
                                 title="重新获取图标"
                                 data-tooltip="重新获取图标"
@@ -527,7 +529,7 @@ export default function AdminApps() {
                               </button>
                               <button
                                 type="button"
-                                className="focus-ring rounded-md p-2 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                className="admin-icon-button disabled:cursor-not-allowed disabled:opacity-40"
                                 onClick={() => runHealthCheck(app)}
                                 title={app.healthEnabled === false ? '已关闭健康检查' : '立即检查'}
                                 data-tooltip={app.healthEnabled === false ? '已关闭健康检查' : '立即检查'}
@@ -535,10 +537,10 @@ export default function AdminApps() {
                               >
                                 <RefreshCw size={16} className={checkingAppIds.has(app.id) ? 'animate-spin' : ''} />
                               </button>
-                              <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(app)} title="编辑" data-tooltip="编辑">
+                              <button className="admin-icon-button" onClick={() => startEdit(app)} title="编辑" data-tooltip="编辑">
                                 <Pencil size={16} />
                               </button>
-                              <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(app.id)} title="删除" data-tooltip="删除">
+                              <button className="admin-danger-button" onClick={() => remove(app.id)} title="删除" data-tooltip="删除">
                                 <Trash2 size={16} />
                               </button>
                             </div>
@@ -547,8 +549,8 @@ export default function AdminApps() {
                       ))}
                     </div>
                     <div className="hidden overflow-x-auto md:block">
-                      <table className="w-full min-w-[860px] text-left text-sm">
-                        <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                      <table className="admin-table min-w-[860px]">
+                        <thead>
                           <tr>
                             <th className="w-12 px-4 py-3"></th>
                             <th className="px-4 py-3">名称</th>
@@ -584,14 +586,14 @@ export default function AdminApps() {
                                 reorderApp(group, sourceId, app.id);
                               }}
                               onDragEnd={() => setDraggingAppId(null)}
-                              className={`border-t border-black/10 transition dark:border-white/10 ${
-                                draggingAppId === app.id ? 'bg-mint/10 opacity-70' : 'bg-transparent'
-                              } ${canDragSort ? 'cursor-move hover:bg-slate-50 dark:hover:bg-slate-900/80' : ''}`}
+                              className={`${draggingAppId === app.id ? 'bg-[var(--admin-accent-soft)] opacity-70' : 'bg-transparent'} ${
+                                canDragSort ? 'cursor-move' : ''
+                              }`}
                             >
                             <td className="px-4 py-4">
                               <span
                                 className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 ${
-                                  canDragSort ? 'cursor-grab hover:bg-slate-100 hover:text-mint active:cursor-grabbing dark:hover:bg-slate-800' : 'opacity-40'
+                                  canDragSort ? 'cursor-grab hover:bg-[var(--admin-secondary)] hover:text-[var(--admin-accent)] active:cursor-grabbing' : 'opacity-40'
                                 }`}
                                 title={canDragSort ? '拖拽排序' : '清空搜索后可排序'}
                                 data-tooltip={canDragSort ? '拖拽排序' : '清空搜索后可排序'}
@@ -605,7 +607,7 @@ export default function AdminApps() {
                                 <span className="truncate">{getAppDisplayName(app)}</span>
                               </div>
                             </td>
-                            <td className="max-w-xs truncate px-4 py-4 text-slate-500">{app.url}</td>
+                            <td className="max-w-xs truncate px-4 py-4 text-[var(--admin-muted)]">{app.url}</td>
                             <td className="px-4 py-4">
                               <HealthBadge app={app} />
                             </td>
@@ -632,7 +634,7 @@ export default function AdminApps() {
                               <div className="flex justify-end gap-2">
                                 <button
                                   type="button"
-                                  className="focus-ring rounded-md p-2 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                  className="admin-icon-button disabled:cursor-not-allowed disabled:opacity-40"
                                   onClick={() => runIconRefresh(app)}
                                   title="重新获取图标"
                                   data-tooltip="重新获取图标"
@@ -642,7 +644,7 @@ export default function AdminApps() {
                                 </button>
                                 <button
                                   type="button"
-                                  className="focus-ring rounded-md p-2 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                  className="admin-icon-button disabled:cursor-not-allowed disabled:opacity-40"
                                   onClick={() => runHealthCheck(app)}
                                   title={app.healthEnabled === false ? '已关闭健康检查' : '立即检查'}
                                   data-tooltip={app.healthEnabled === false ? '已关闭健康检查' : '立即检查'}
@@ -650,10 +652,10 @@ export default function AdminApps() {
                                 >
                                   <RefreshCw size={16} className={checkingAppIds.has(app.id) ? 'animate-spin' : ''} />
                                 </button>
-                                <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(app)} title="编辑" data-tooltip="编辑">
+                                <button className="admin-icon-button" onClick={() => startEdit(app)} title="编辑" data-tooltip="编辑">
                                   <Pencil size={16} />
                                 </button>
-                                <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(app.id)} title="删除" data-tooltip="删除">
+                                <button className="admin-danger-button" onClick={() => remove(app.id)} title="删除" data-tooltip="删除">
                                   <Trash2 size={16} />
                                 </button>
                               </div>
@@ -684,11 +686,11 @@ export default function AdminApps() {
             onClose={closeModal}
             footer={
               <>
-                <button type="button" className="focus-ring inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={closeModal}>
+                <button type="button" className="admin-secondary-button" onClick={closeModal}>
                   <X size={16} />
                   取消
                 </button>
-                <button className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white hover:bg-ink" type="submit">
+                <button className="admin-primary-button" type="submit">
                   <Save size={16} />
                   保存
                 </button>

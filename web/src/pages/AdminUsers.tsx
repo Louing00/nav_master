@@ -1,8 +1,9 @@
-import { Pencil, Plus, Save, Trash2, UserRound, X } from 'lucide-react';
+import { Pencil, Plus, Save, Trash2, UserRound, Users, X } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { createUser, deleteUser, fetchUsers, updateUser, type AdminUser } from '../api/users';
 import { getErrorMessage } from '../api/client';
 import AdminModal from '../components/AdminModal';
+import AdminPageHeader from '../components/AdminPageHeader';
 import { confirmDelete } from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
 import Toast, { useToast } from '../components/Toast';
@@ -85,21 +86,18 @@ export default function AdminUsers() {
 
   return (
     <div className="grid gap-6">
-      <section className="surface overflow-hidden rounded-lg">
-        <div className="flex flex-col gap-3 border-b border-black/10 p-5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">用户列表</h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">管理员可统一维护账号和权限</p>
-          </div>
-          <button
-            type="button"
-            onClick={startCreate}
-            className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-mint px-3 py-2 text-sm font-semibold text-white hover:bg-ink"
-          >
-            <Plus size={16} />
-            新增用户
-          </button>
-        </div>
+      <section className="admin-panel overflow-hidden rounded-lg">
+        <AdminPageHeader
+          icon={Users}
+          title="用户管理"
+          description={`维护账号权限与独立导航数据，共 ${users.length} 个用户`}
+          actions={
+            <button type="button" onClick={startCreate} className="admin-primary-button">
+              <Plus size={16} />
+              新增用户
+            </button>
+          }
+        />
         {error && !modalOpen && <p className="mx-5 mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200">{error}</p>}
         {users.length === 0 ? (
           <div className="p-5">
@@ -109,27 +107,27 @@ export default function AdminUsers() {
           <>
         <div className="grid gap-3 p-4 md:hidden">
           {users.map((user) => (
-            <article key={user.id} className="rounded-lg border border-black/10 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900/70">
+            <article key={user.id} className="admin-mobile-card">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                  <span className="admin-icon-tile">
                     <UserRound size={19} strokeWidth={1.8} />
                   </span>
                   <div className="min-w-0">
                     <h3 className="truncate font-semibold">{user.username}</h3>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{user.categoryCount} 分类 / {user.appCount} 应用</p>
+                    <p className="mt-1 text-sm text-[var(--admin-muted)]">{user.categoryCount} 分类 / {user.appCount} 应用</p>
                   </div>
                 </div>
-                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${user.isAdmin ? 'bg-mint/10 text-mint' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'}`}>
+                <span className={`shrink-0 px-2.5 py-1 text-xs font-medium ${user.isAdmin ? 'admin-status-accent' : 'admin-status-neutral'}`}>
                   {user.isAdmin ? '管理员' : '普通用户'}
                 </span>
               </div>
-              <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">创建于 {new Date(user.createdAt).toLocaleString()}</p>
+              <p className="mt-3 text-xs text-[var(--admin-muted)]">创建于 {new Date(user.createdAt).toLocaleString()}</p>
               <div className="mt-4 flex justify-end gap-2">
-                <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(user)} title="编辑" data-tooltip="编辑">
+                <button className="admin-icon-button" onClick={() => startEdit(user)} title="编辑" data-tooltip="编辑">
                   <Pencil size={16} />
                 </button>
-                <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(user)} title="删除" data-tooltip="删除">
+                <button className="admin-danger-button" onClick={() => remove(user)} title="删除" data-tooltip="删除">
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -137,8 +135,8 @@ export default function AdminUsers() {
           ))}
         </div>
         <div className="hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+          <table className="admin-table min-w-[760px]">
+            <thead>
               <tr>
                 <th className="px-5 py-3">用户</th>
                 <th className="px-5 py-3">权限</th>
@@ -149,24 +147,28 @@ export default function AdminUsers() {
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id} className="border-t border-black/10 dark:border-white/10">
+                <tr key={user.id}>
                   <td className="px-5 py-4 font-medium">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                      <span className="admin-icon-tile h-9 w-9">
                         <UserRound size={17} strokeWidth={1.8} />
                       </span>
                       {user.username}
                     </div>
                   </td>
-                  <td className="px-5 py-4">{user.isAdmin ? '管理员' : '普通用户'}</td>
-                  <td className="px-5 py-4 text-slate-500">{user.categoryCount} 分类 / {user.appCount} 应用</td>
-                  <td className="px-5 py-4 text-slate-500">{new Date(user.createdAt).toLocaleString()}</td>
+                  <td className="px-5 py-4">
+                    <span className={`inline-flex px-2.5 py-1 text-xs font-medium ${user.isAdmin ? 'admin-status-accent' : 'admin-status-neutral'}`}>
+                      {user.isAdmin ? '管理员' : '普通用户'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 text-[var(--admin-muted)]">{user.categoryCount} 分类 / {user.appCount} 应用</td>
+                  <td className="px-5 py-4 text-[var(--admin-muted)]">{new Date(user.createdAt).toLocaleString()}</td>
                   <td className="px-5 py-4">
                     <div className="flex justify-end gap-2">
-                      <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(user)} title="编辑" data-tooltip="编辑">
+                      <button className="admin-icon-button" onClick={() => startEdit(user)} title="编辑" data-tooltip="编辑">
                         <Pencil size={16} />
                       </button>
-                      <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(user)} title="删除" data-tooltip="删除">
+                      <button className="admin-danger-button" onClick={() => remove(user)} title="删除" data-tooltip="删除">
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -188,11 +190,11 @@ export default function AdminUsers() {
             maxWidth="max-w-xl"
             footer={
               <>
-                <button type="button" className="focus-ring inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={closeModal}>
+                <button type="button" className="admin-secondary-button" onClick={closeModal}>
                   <X size={16} />
                   取消
                 </button>
-                <button className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white hover:bg-ink" type="submit">
+                <button className="admin-primary-button" type="submit">
                   <Save size={16} />
                   保存
                 </button>

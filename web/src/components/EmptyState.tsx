@@ -9,7 +9,7 @@ type Props = {
 
 export default function EmptyState({ title, description, illustration = emptySearchIllustration }: Props) {
   return (
-    <div className="surface flex flex-col items-center rounded-lg px-6 py-10 text-center">
+    <div className="empty-state-panel flex flex-col items-center rounded-lg px-6 py-10 text-center">
       <img
         src={illustration}
         alt=""
@@ -19,8 +19,8 @@ export default function EmptyState({ title, description, illustration = emptySea
       <span className="-mt-2 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
         <SearchX size={20} strokeWidth={1.8} />
       </span>
-      <p className="mt-3 text-base font-semibold text-ink dark:text-white">{title}</p>
-      {description && <p className="mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">{description}</p>}
+      <p className="mt-3 text-base font-semibold text-[var(--admin-text,#172033)] dark:text-white">{title}</p>
+      {description && <p className="mt-2 max-w-md text-sm text-[var(--admin-muted,#667386)]">{description}</p>}
     </div>
   );
 }

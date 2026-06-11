@@ -1,8 +1,9 @@
-import { Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { List, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { createCategory, deleteCategory, fetchCategories, updateCategory } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import AdminModal from '../components/AdminModal';
+import AdminPageHeader from '../components/AdminPageHeader';
 import CategoryIcon, { CATEGORY_ICON_OPTIONS, resolveCategoryIconKey } from '../components/CategoryIcon';
 import { confirmDelete } from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
@@ -88,21 +89,18 @@ export default function AdminCategories() {
 
   return (
     <div className="grid gap-6">
-      <section className="surface overflow-hidden rounded-lg">
-        <div className="flex flex-col gap-3 border-b border-black/10 p-5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">分类列表</h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">管理当前用户的导航分组</p>
-          </div>
-          <button
-            type="button"
-            onClick={startCreate}
-            className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-mint px-3 py-2 text-sm font-semibold text-white hover:bg-ink"
-          >
-            <Plus size={16} />
-            新增分类
-          </button>
-        </div>
+      <section className="admin-panel overflow-hidden rounded-lg">
+        <AdminPageHeader
+          icon={List}
+          title="分类管理"
+          description={`组织首页分组与展示顺序，共 ${categories.length} 个分类`}
+          actions={
+            <button type="button" onClick={startCreate} className="admin-primary-button">
+              <Plus size={16} />
+              新增分类
+            </button>
+          }
+        />
         {categories.length === 0 ? (
           <div className="p-5">
             <EmptyState title="暂无分类" description="创建第一个分类，用于组织你的应用入口。" />
@@ -111,30 +109,30 @@ export default function AdminCategories() {
           <>
         <div className="grid gap-3 p-4 md:hidden">
           {categories.map((category) => (
-            <article key={category.id} className="rounded-lg border border-black/10 bg-white/80 p-4 dark:border-white/10 dark:bg-slate-900/70">
+            <article key={category.id} className="admin-mobile-card">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                  <span className="admin-icon-tile">
                     <CategoryIcon icon={category.icon} name={category.name} size={19} />
                   </span>
                   <div className="min-w-0">
                     <h3 className="truncate font-semibold">{category.name}</h3>
-                  {category.description && <p className="mt-1 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">{category.description}</p>}
+                  {category.description && <p className="mt-1 line-clamp-2 text-sm text-[var(--admin-muted)]">{category.description}</p>}
                   </div>
                 </div>
-                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${category.visible ? 'bg-mint/10 text-mint' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'}`}>
+                <span className={`shrink-0 px-2.5 py-1 text-xs font-medium ${category.visible ? 'admin-status-accent' : 'admin-status-neutral'}`}>
                   {category.visible ? '显示' : '隐藏'}
                 </span>
               </div>
-              <div className="mt-4 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
+              <div className="mt-4 flex items-center justify-between text-sm text-[var(--admin-muted)]">
                 <span>{category._count?.apps || 0} 个应用</span>
                 <span>排序 {category.sortOrder}</span>
               </div>
               <div className="mt-4 flex justify-end gap-2">
-                <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(category)} title="编辑" data-tooltip="编辑">
+                <button className="admin-icon-button" onClick={() => startEdit(category)} title="编辑" data-tooltip="编辑">
                   <Pencil size={16} />
                 </button>
-                <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(category.id)} title="删除" data-tooltip="删除">
+                <button className="admin-danger-button" onClick={() => remove(category.id)} title="删除" data-tooltip="删除">
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -142,8 +140,8 @@ export default function AdminCategories() {
           ))}
         </div>
         <div className="hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+          <table className="admin-table min-w-[640px]">
+            <thead>
               <tr>
                 <th className="px-5 py-3">名称</th>
                 <th className="px-5 py-3">应用数</th>
@@ -154,24 +152,28 @@ export default function AdminCategories() {
             </thead>
             <tbody>
               {categories.map((category) => (
-                <tr key={category.id} className="border-t border-black/10 dark:border-white/10">
+                <tr key={category.id}>
                   <td className="px-5 py-4 font-medium">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                      <span className="admin-icon-tile h-9 w-9">
                         <CategoryIcon icon={category.icon} name={category.name} size={17} />
                       </span>
                       {category.name}
                     </div>
                   </td>
                   <td className="px-5 py-4">{category._count?.apps || 0}</td>
-                  <td className="px-5 py-4">{category.visible ? '显示' : '隐藏'}</td>
+                  <td className="px-5 py-4">
+                    <span className={`inline-flex px-2.5 py-1 text-xs font-medium ${category.visible ? 'admin-status-accent' : 'admin-status-neutral'}`}>
+                      {category.visible ? '显示' : '隐藏'}
+                    </span>
+                  </td>
                   <td className="px-5 py-4">{category.sortOrder}</td>
                   <td className="px-5 py-4">
                     <div className="flex justify-end gap-2">
-                      <button className="focus-ring rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => startEdit(category)} title="编辑" data-tooltip="编辑">
+                      <button className="admin-icon-button" onClick={() => startEdit(category)} title="编辑" data-tooltip="编辑">
                         <Pencil size={16} />
                       </button>
-                      <button className="focus-ring rounded-md p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => remove(category.id)} title="删除" data-tooltip="删除">
+                      <button className="admin-danger-button" onClick={() => remove(category.id)} title="删除" data-tooltip="删除">
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -193,11 +195,11 @@ export default function AdminCategories() {
             maxWidth="max-w-xl"
             footer={
               <>
-                <button type="button" className="focus-ring inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={closeModal}>
+                <button type="button" className="admin-secondary-button" onClick={closeModal}>
                   <X size={16} />
                   取消
                 </button>
-                <button className="focus-ring inline-flex items-center gap-2 rounded-md bg-mint px-4 py-2 text-sm font-semibold text-white hover:bg-ink" type="submit">
+                <button className="admin-primary-button" type="submit">
                   <Save size={16} />
                   保存
                 </button>
@@ -212,7 +214,7 @@ export default function AdminCategories() {
               <label>
                 <span className="admin-label">图标</span>
                 <div className="mt-1 flex items-center gap-2">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mint/10 text-mint dark:bg-mint/20">
+                  <span className="admin-icon-tile">
                     <CategoryIcon icon={form.icon} name={form.name} size={19} />
                   </span>
                   <select className="admin-input" value={form.icon} onChange={(event) => setForm({ ...form, icon: event.target.value })}>

@@ -3,6 +3,7 @@ import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { changePassword } from '../api/auth';
 import { getErrorMessage } from '../api/client';
+import AdminPageHeader from '../components/AdminPageHeader';
 
 export default function AdminSecurity() {
   const navigate = useNavigate();
@@ -38,18 +39,9 @@ export default function AdminSecurity() {
   }
 
   return (
-    <section className="surface max-w-xl rounded-lg p-5">
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-md bg-ink text-white dark:bg-white dark:text-ink">
-          <KeyRound size={20} />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold">账号安全</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">修改当前登录用户的密码</p>
-        </div>
-      </div>
-
-      <form onSubmit={submit} className="mt-6 grid gap-4">
+    <section className="admin-panel max-w-2xl overflow-hidden rounded-lg">
+      <AdminPageHeader icon={KeyRound} title="账号安全" description="更新当前账号密码，修改后需要重新登录" />
+      <form onSubmit={submit} className="grid gap-4 p-5 sm:p-6">
         <label>
           <span className="admin-label">当前密码</span>
           <input
@@ -89,7 +81,7 @@ export default function AdminSecurity() {
         {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200">{error}</p>}
 
         <button
-          className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-mint px-4 py-2 font-semibold text-white hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60"
+          className="admin-primary-button mt-1 w-full sm:w-auto sm:justify-self-start"
           type="submit"
           disabled={saving}
         >
