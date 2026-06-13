@@ -1,44 +1,18 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { AppIconService } from './app-icon.service';
+import { serializeApp } from './app-record';
+import { AppMetadataService } from './app-metadata.service';
 import { CreateAppDto } from './dto/create-app.dto';
 import { UpdateAppDto } from './dto/update-app.dto';
 import { HealthCheckService } from './health-check.service';
-import { hasManualAppName, normalizeManualName, shouldRetryAppNameResolve } from './app-name.util';
-
-function parseTags(tags?: string | null): string[] {
-  if (!tags) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(tags);
-    return Array.isArray(parsed) ? parsed.map(String) : [];
-  } catch {
-    return [];
-  }
-}
-
-function serialize(app: any) {
-  return {
-    ...app,
-    tags: parseTags(app.tags),
-  };
-}
-
-const DEFAULT_TEXT_ICON = '⌁';
-
-function hasManualIcon(icon?: string | null, iconUrl?: string | null) {
-  const textIcon = icon?.trim();
-  return Boolean(iconUrl?.trim() || (textIcon && textIcon !== DEFAULT_TEXT_ICON));
-}
+import { normalizeManualName } from './app-name.util';
 
 @Injectable()
 export class AppsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly appIconService: AppIconService,
+    private readonly appMetadataService: AppMetadataService,
     private readonly healthCheckService: HealthCheckService,
   ) {}
 
@@ -66,8 +40,8 @@ export class AppsService {
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
 
-    this.queueMissingMetadataResolve(userId, apps);
-    return apps.map(serialize);
+    this.appMetadataService.queueMissing(userId, apps, true);
+    return apps.map(serializeApp);
   }
 
   async create(userId: number, dto: CreateAppDto) {
@@ -82,12 +56,12 @@ export class AppsService {
       },
       include: { category: true },
     });
-    this.queueMetadataResolve(userId, app.id, app.url);
-    return serialize(app);
+    this.appMetadataService.queueForAppChange(userId, app.id, app.url);
+    return serializeApp(app);
   }
 
   async preview(url: string) {
-    return this.appIconService.resolveMetadata(url);
+    return this.appMetadataService.preview(url);
   }
 
   async update(userId: number, id: number, dto: UpdateAppDto) {
@@ -116,44 +90,27 @@ export class AppsService {
       },
       include: { category: true },
     });
-    this.queueMetadataResolve(userId, app.id, targetUrl);
-    return serialize(app);
+    this.appMetadataService.queueForAppChange(userId, app.id, targetUrl);
+    return serializeApp(app);
   }
 
   async checkHealth(userId: number, id: number) {
-    return serialize(await this.healthCheckService.checkApp(userId, id));
+    return serializeApp(await this.healthCheckService.checkApp(userId, id));
   }
 
   async checkAllHealth(userId: number) {
     const apps = await this.healthCheckService.checkAll(userId);
-    return apps.map(serialize);
+    return apps.map(serializeApp);
   }
 
   async refreshIcon(userId: number, id: number) {
-    const existing = await this.ensureExists(userId, id);
-    const app = await this.prisma.app.update({
-      where: { id },
-      data: await this.resolveIconCache(existing.url, true),
-      include: { category: true },
-    });
-    return serialize(app);
+    return serializeApp(await this.appMetadataService.refreshIcon(userId, id));
   }
 
   async cacheBrowserResolvedIcon(userId: number, id: number, resolvedIconUrl: string) {
-    const existing = await this.ensureExists(userId, id);
-    if (!this.appIconService.isBrowserCandidate(existing.url, resolvedIconUrl)) {
-      throw new BadRequestException('图标地址不在允许的浏览器候选范围内');
-    }
-
-    const app = await this.prisma.app.update({
-      where: { id },
-      data: {
-        resolvedIconUrl,
-        iconResolvedAt: new Date(),
-      },
-      include: { category: true },
-    });
-    return serialize(app);
+    return serializeApp(
+      await this.appMetadataService.cacheBrowserResolvedIcon(userId, id, resolvedIconUrl),
+    );
   }
 
   async remove(userId: number, id: number) {
@@ -181,111 +138,4 @@ export class AppsService {
     }
   }
 
-  private async resolveIconCache(url: string, force = false) {
-    return {
-      resolvedIconUrl: await this.appIconService.resolve(url, { force }),
-      iconResolvedAt: new Date(),
-    };
-  }
-
-  private queueMetadataResolve(userId: number, id: number, url: string) {
-    void this.resolveAndCacheMetadata(userId, id, url);
-  }
-
-  private queueMissingMetadataResolve(
-    userId: number,
-    apps: Array<{
-      id: number;
-      url: string;
-      name?: string | null;
-      resolvedName?: string | null;
-      description?: string | null;
-      resolvedDescription?: string | null;
-    }>,
-  ) {
-    for (const app of apps) {
-      const needsName = !app.resolvedName?.trim() && !hasManualAppName(app.name, app.url);
-      const needsDescription = !app.description?.trim() && !app.resolvedDescription?.trim();
-      if ((!needsName && !needsDescription) || !shouldRetryAppNameResolve(userId, app.id, app.url)) {
-        continue;
-      }
-
-      this.queueMetadataResolve(userId, app.id, app.url);
-    }
-  }
-
-  private async resolveAndCacheMetadata(userId: number, id: number, url: string) {
-    try {
-      const app = await this.prisma.app.findFirst({
-        where: { id, userId, url },
-        select: {
-          name: true,
-          resolvedName: true,
-          description: true,
-          resolvedDescription: true,
-          icon: true,
-          iconUrl: true,
-          resolvedIconUrl: true,
-        },
-      });
-      if (!app) {
-        return;
-      }
-
-      const needsName = !app.resolvedName?.trim() && !hasManualAppName(app.name, url);
-      const needsDescription = !app.description?.trim() && !app.resolvedDescription?.trim();
-      const needsIcon =
-        !app.resolvedIconUrl?.trim() &&
-        !hasManualIcon(app.icon, app.iconUrl) &&
-        (await this.iconAutoResolveOnChangeEnabled(userId));
-      if (!needsName && !needsDescription && !needsIcon) {
-        return;
-      }
-
-      const metadata = needsIcon
-        ? await this.appIconService.resolveMetadata(url)
-        : {
-            ...(await this.appIconService.resolvePageMetadata(url)),
-            resolvedIconUrl: null,
-          };
-      const resolvedAt = new Date();
-      const data: Prisma.AppUpdateManyMutationInput = {};
-
-      if (needsName) {
-        data.resolvedName = metadata.resolvedName;
-        data.nameResolvedAt = resolvedAt;
-      }
-      if (needsDescription) {
-        data.resolvedDescription = metadata.resolvedDescription;
-        data.descriptionResolvedAt = resolvedAt;
-      }
-      if (needsIcon) {
-        data.resolvedIconUrl = metadata.resolvedIconUrl;
-        data.iconResolvedAt = resolvedAt;
-      }
-
-      await this.prisma.app.updateMany({
-        where: { id, userId, url },
-        data,
-      });
-    } catch {
-      // Metadata refresh is best-effort; creating or updating an app should stay fast.
-    }
-  }
-
-  private async iconAutoResolveOnChangeEnabled(userId: number) {
-    const rows = await this.prisma.setting.findMany({
-      where: { userId, key: { in: ['icon_auto_resolve_on_change', 'icon_resolve_mode'] } },
-    });
-    const settings = rows.reduce<Record<string, string>>((acc, row) => {
-      acc[row.key] = row.value || '';
-      return acc;
-    }, {});
-
-    if (settings.icon_auto_resolve_on_change !== undefined) {
-      return settings.icon_auto_resolve_on_change !== 'false';
-    }
-
-    return settings.icon_resolve_mode !== 'server_only';
-  }
 }

@@ -1,19 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
-
-const settings = {
-  site_title: 'AtlasGate 星渡枢航',
-  site_subtitle: '个人系统、内网服务与运维入口的统一星图',
-  logo: '✦',
-  theme: 'auto',
-  footer_text: 'Powered by AtlasGate',
-  icon_resolve_mode: 'auto',
-  icon_auto_resolve_on_change: 'true',
-  home_quick_sort_enabled: 'false',
-  health_auto_check_enabled: 'true',
-  health_auto_check_interval_minutes: '30',
-};
+import { SITE_SETTING_DEFAULTS } from '../settings/site-settings';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit {
@@ -143,7 +131,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
     });
 
     await Promise.all(
-      Object.entries(settings).map(([key, value]) => {
+      Object.entries(SITE_SETTING_DEFAULTS).map(([key, value]) => {
         const defaultValue =
           key === 'icon_auto_resolve_on_change' && existingIconMode?.value === 'server_only' ? 'false' : value;
         return this.setting.upsert({

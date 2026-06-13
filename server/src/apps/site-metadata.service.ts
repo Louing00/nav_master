@@ -234,7 +234,7 @@ function delay(ms: number) {
 }
 
 @Injectable()
-export class AppIconService {
+export class SiteMetadataService {
   private readonly pageCache = new Map<string, CacheEntry<PageInfo>>();
   private readonly pageInflight = new Map<string, Promise<PageInfo>>();
   private readonly metadataCache = new Map<string, CacheEntry<ResolvedAppMetadata>>();
@@ -288,14 +288,6 @@ export class AppIconService {
       resolvedName: pageInfo.resolvedName,
       resolvedDescription: pageInfo.resolvedDescription,
     };
-  }
-
-  async resolveName(url: string): Promise<string | null> {
-    return (await this.resolvePageMetadata(url)).resolvedName;
-  }
-
-  async resolveDescription(url: string): Promise<string | null> {
-    return (await this.resolvePageMetadata(url)).resolvedDescription;
   }
 
   getBrowserCandidates(url: string) {

@@ -1,18 +1,23 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
-function serializeUser(user: any) {
+type UserWithCounts = Prisma.UserGetPayload<{
+  include: { _count: { select: { apps: true; categories: true } } };
+}>;
+
+function serializeUser(user: UserWithCounts) {
   return {
     id: user.id,
     username: user.username,
     isAdmin: user.isAdmin,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
-    appCount: user._count?.apps ?? 0,
-    categoryCount: user._count?.categories ?? 0,
+    appCount: user._count.apps,
+    categoryCount: user._count.categories,
   };
 }
 

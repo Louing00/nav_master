@@ -59,11 +59,6 @@ export async function refreshAppIcon(id: number) {
   return data;
 }
 
-export async function checkAllAppHealth() {
-  const { data } = await client.post<NavApp[]>('/admin/apps/health-check');
-  return data;
-}
-
 export async function fetchCategories() {
   const { data } = await client.get<AdminCategory[]>('/admin/categories');
   return data;

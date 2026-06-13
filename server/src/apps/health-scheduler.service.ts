@@ -1,25 +1,15 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  HEALTH_AUTO_CHECK_LAST_AT_KEY,
+  parseHealthIntervalMinutes,
+  settingEnabled,
+  settingsRowsToMap,
+} from '../settings/site-settings';
 import { HealthCheckService } from './health-check.service';
 
 const ENABLED_KEY = 'health_auto_check_enabled';
 const INTERVAL_KEY = 'health_auto_check_interval_minutes';
-const LAST_CHECK_KEY = 'health_auto_check_last_at';
-const DEFAULT_INTERVAL_MINUTES = 30;
-const MIN_INTERVAL_MINUTES = 1;
-const MAX_INTERVAL_MINUTES = 1440;
-
-function parseEnabled(value?: string | null) {
-  return value === undefined || value === null || value === '' ? true : value === 'true';
-}
-
-function parseInterval(value?: string | null) {
-  const interval = Number(value || DEFAULT_INTERVAL_MINUTES);
-  if (!Number.isFinite(interval)) {
-    return DEFAULT_INTERVAL_MINUTES;
-  }
-  return Math.min(Math.max(Math.round(interval), MIN_INTERVAL_MINUTES), MAX_INTERVAL_MINUTES);
-}
 
 @Injectable()
 export class HealthSchedulerService implements OnModuleInit, OnModuleDestroy {
@@ -71,19 +61,16 @@ export class HealthSchedulerService implements OnModuleInit, OnModuleDestroy {
 
   private async runUserDueCheck(userId: number) {
     const rows = await this.prisma.setting.findMany({
-      where: { userId, key: { in: [ENABLED_KEY, INTERVAL_KEY, LAST_CHECK_KEY] } },
+      where: { userId, key: { in: [ENABLED_KEY, INTERVAL_KEY, HEALTH_AUTO_CHECK_LAST_AT_KEY] } },
     });
-    const settings = rows.reduce<Record<string, string>>((acc, row) => {
-      acc[row.key] = row.value || '';
-      return acc;
-    }, {});
+    const settings = settingsRowsToMap(rows);
 
-    if (!parseEnabled(settings[ENABLED_KEY])) {
+    if (!settingEnabled(settings[ENABLED_KEY], true)) {
       return;
     }
 
-    const intervalMs = parseInterval(settings[INTERVAL_KEY]) * 60_000;
-    const lastCheckedAt = Date.parse(settings[LAST_CHECK_KEY] || '');
+    const intervalMs = parseHealthIntervalMinutes(settings[INTERVAL_KEY]) * 60_000;
+    const lastCheckedAt = Date.parse(settings[HEALTH_AUTO_CHECK_LAST_AT_KEY] || '');
     if (Number.isFinite(lastCheckedAt) && Date.now() - lastCheckedAt < intervalMs) {
       return;
     }
@@ -91,9 +78,9 @@ export class HealthSchedulerService implements OnModuleInit, OnModuleDestroy {
     const checkedApps = await this.healthCheckService.checkAll(userId);
     const checkedAt = new Date().toISOString();
     await this.prisma.setting.upsert({
-      where: { userId_key: { userId, key: LAST_CHECK_KEY } },
+      where: { userId_key: { userId, key: HEALTH_AUTO_CHECK_LAST_AT_KEY } },
       update: { value: checkedAt },
-      create: { userId, key: LAST_CHECK_KEY, value: checkedAt },
+      create: { userId, key: HEALTH_AUTO_CHECK_LAST_AT_KEY, value: checkedAt },
     });
 
     if (checkedApps.length > 0) {

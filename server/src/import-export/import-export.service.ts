@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { decodeAppTags, encodeAppTags } from '../apps/app-record';
 import { PrismaService } from '../prisma/prisma.service';
 
 type ImportCategory = {
@@ -29,26 +30,6 @@ type ImportApp = {
   healthEnabled?: boolean;
   features?: Array<{ title?: string; description?: string | null; anchor?: string; sortOrder?: number }>;
 };
-
-function parseTags(tags: unknown): string {
-  if (Array.isArray(tags)) {
-    return JSON.stringify(tags.map(String));
-  }
-  if (typeof tags === 'string') {
-    try {
-      const parsed = JSON.parse(tags);
-      return JSON.stringify(Array.isArray(parsed) ? parsed.map(String) : []);
-    } catch {
-      return JSON.stringify(
-        tags
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean),
-      );
-    }
-  }
-  return JSON.stringify([]);
-}
 
 function parseDate(value: string | Date | null | undefined) {
   if (!value) {
@@ -101,7 +82,7 @@ export class ImportExportService {
           ...payload,
           category: cleanCategory,
           categoryName: category?.name,
-          tags: parseTags(app.tags) ? JSON.parse(parseTags(app.tags)) : [],
+          tags: decodeAppTags(app.tags, { allowLegacyCsv: true }),
         };
       }),
     };
@@ -176,7 +157,7 @@ export class ImportExportService {
           icon: app.icon,
           iconUrl: app.iconUrl,
           categoryId: categoryId || null,
-          tags: parseTags(app.tags),
+          tags: encodeAppTags(app.tags),
           sortOrder: app.sortOrder || 0,
           visible: app.visible ?? true,
           openInNewTab: app.openInNewTab ?? true,
@@ -193,7 +174,7 @@ export class ImportExportService {
           icon: app.icon,
           iconUrl: app.iconUrl,
           categoryId: categoryId || null,
-          tags: parseTags(app.tags),
+          tags: encodeAppTags(app.tags),
           sortOrder: app.sortOrder || 0,
           visible: app.visible ?? true,
           openInNewTab: app.openInNewTab ?? true,

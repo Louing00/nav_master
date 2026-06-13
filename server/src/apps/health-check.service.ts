@@ -18,6 +18,30 @@ const BROWSER_LIKE_HEADERS = {
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
 };
 
+export function classifyHealthStatus(status: number, latencyMs: number): ProbeResult {
+  if (status >= 200 && status < 400) {
+    return {
+      healthStatus: 'healthy',
+      healthLatencyMs: latencyMs,
+      healthError: null,
+    };
+  }
+
+  if (ACCESS_RESTRICTED_STATUSES.has(status)) {
+    return {
+      healthStatus: 'restricted',
+      healthLatencyMs: latencyMs,
+      healthError: `HTTP ${status}`,
+    };
+  }
+
+  return {
+    healthStatus: 'unhealthy',
+    healthLatencyMs: latencyMs,
+    healthError: `HTTP ${status}`,
+  };
+}
+
 @Injectable()
 export class HealthCheckService {
   constructor(private readonly prisma: PrismaService) {}
@@ -31,6 +55,10 @@ export class HealthCheckService {
       throw new BadRequestException('该应用未启用健康检查');
     }
 
+    return this.checkPersistedApp(app);
+  }
+
+  private async checkPersistedApp(app: App) {
     const result = await this.probe(app.url);
     return this.prisma.app.update({
       where: { id: app.id },
@@ -51,7 +79,7 @@ export class HealthCheckService {
     const checked: App[] = [];
 
     for (const app of apps) {
-      checked.push(await this.checkApp(userId, app.id));
+      checked.push(await this.checkPersistedApp(app));
     }
 
     return checked;
@@ -85,28 +113,7 @@ export class HealthCheckService {
   }
 
   private statusFromResponse(response: Response, startedAt: number): ProbeResult {
-    const latency = Date.now() - startedAt;
-    if (response.status >= 200 && response.status < 400) {
-      return {
-        healthStatus: 'healthy',
-        healthLatencyMs: latency,
-        healthError: null,
-      };
-    }
-
-    if (ACCESS_RESTRICTED_STATUSES.has(response.status)) {
-      return {
-        healthStatus: 'restricted',
-        healthLatencyMs: latency,
-        healthError: `HTTP ${response.status}`,
-      };
-    }
-
-    return {
-      healthStatus: 'unhealthy',
-      healthLatencyMs: latency,
-      healthError: `HTTP ${response.status}`,
-    };
+    return classifyHealthStatus(response.status, Date.now() - startedAt);
   }
 
   private async request(url: string, method: 'HEAD' | 'GET') {

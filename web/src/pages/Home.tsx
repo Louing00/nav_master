@@ -1,38 +1,25 @@
-import { ArrowUp, LayoutGrid, LogOut, Menu, Moon, Save, Search, Shield, Sun, X } from 'lucide-react';
-import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { ArrowUp, Save, X } from 'lucide-react';
+import { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminModal from '../components/AdminModal';
-import AppMetadataPreview from '../components/AppMetadataPreview';
-import BrandMark from '../components/BrandMark';
-import CategoryIcon from '../components/CategoryIcon';
 import CategorySection from '../components/CategorySection';
 import EmptyState from '../components/EmptyState';
-import homeConsoleIllustration from '../assets/illustrations/home-console.svg';
 import { logout } from '../api/auth';
 import { createApp, fetchAdminApps, fetchCategories as fetchAdminCategories } from '../api/admin';
 import { getErrorMessage } from '../api/client';
 import { checkPublicCategoryHealth, fetchPublicApps, fetchPublicConfig, reorderPublicCategoryApps } from '../api/public';
 import Toast, { useToast } from '../components/Toast';
-import { useAppMetadataPreview } from '../hooks/useAppMetadataPreview';
-import { appNeedsResolvedMetadata, getAppDisplayDescription, getAppDisplayName } from '../lib/appName';
+import AppEditorFields from '../features/apps/AppEditorFields';
+import { buildAppPayload } from '../features/apps/appEditor';
+import { useAppEditor } from '../features/apps/useAppEditor';
+import HomeHeader from '../features/home/HomeHeader';
+import { useDeferredMetadataRefresh } from '../hooks/useDeferredMetadataRefresh';
+import { getAppDisplayDescription, getAppDisplayName } from '../lib/appName';
 import type { NavApp, NavCategory } from '../types/app';
 import type { AdminCategory } from '../types/category';
 import type { SiteSettings } from '../types/setting';
 
 const COLLAPSED_CATEGORIES_KEY = 'atlasgate.home.collapsedCategories';
-const quickAppBlank = {
-  name: '',
-  url: '',
-  description: '',
-  icon: '',
-  iconUrl: '',
-  categoryId: undefined as number | undefined,
-  tags: '',
-  sortOrder: 0,
-  visible: true,
-  openInNewTab: true,
-  healthEnabled: true,
-};
 
 type DragState = {
   categoryId: number;
@@ -75,11 +62,9 @@ export default function Home() {
   const [dark, setDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>(readCollapsedCategories);
   const [checkingCategoryIds, setCheckingCategoryIds] = useState<Set<number>>(new Set());
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [adminCategories, setAdminCategories] = useState<AdminCategory[]>([]);
   const [adminApps, setAdminApps] = useState<NavApp[]>([]);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
-  const [quickAddForm, setQuickAddForm] = useState(quickAppBlank);
   const [quickAddError, setQuickAddError] = useState('');
   const [quickAddSaving, setQuickAddSaving] = useState(false);
   const [draggingApp, setDraggingApp] = useState<DragState | null>(null);
@@ -87,10 +72,8 @@ export default function Home() {
   const [sortingCategoryIds, setSortingCategoryIds] = useState<Set<number>>(new Set());
   const [activeShortcutCategoryId, setActiveShortcutCategoryId] = useState<number | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const metadataRefreshAttempts = useRef<Set<string>>(new Set());
-  const quickAddAutoDescription = useRef<string | null>(null);
   const { toast, showToast, clearToast } = useToast();
-  const quickAddPreview = useAppMetadataPreview(quickAddForm.url, quickAddOpen);
+  const appEditor = useAppEditor(quickAddOpen);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
@@ -117,21 +100,6 @@ export default function Home() {
     });
   }, []);
 
-  useEffect(() => {
-    const resolvedDescription = quickAddPreview.data?.resolvedDescription;
-    if (!resolvedDescription) {
-      return;
-    }
-
-    setQuickAddForm((current) => {
-      if (current.description.trim() && current.description !== quickAddAutoDescription.current) {
-        return current;
-      }
-      quickAddAutoDescription.current = resolvedDescription;
-      return { ...current, description: resolvedDescription };
-    });
-  }, [quickAddPreview.data?.resolvedDescription]);
-
   const filtered = useMemo(() => {
     const q = keyword.trim().toLowerCase();
     if (!q) {
@@ -157,11 +125,6 @@ export default function Home() {
   const healthyAppCount = allApps.filter((app) => app.healthStatus === 'healthy').length;
   const restrictedAppCount = allApps.filter((app) => app.healthStatus === 'restricted').length;
   const unhealthyAppCount = allApps.filter((app) => app.healthStatus === 'unhealthy').length;
-  const attentionAppCount = restrictedAppCount + unhealthyAppCount;
-  const quickAddDescriptionIsAuto = Boolean(
-    quickAddAutoDescription.current && quickAddForm.description === quickAddAutoDescription.current,
-  );
-
   async function handleLogout() {
     await logout();
     navigate('/admin/login');
@@ -180,11 +143,6 @@ export default function Home() {
       });
       return next;
     });
-  }
-
-  function toggleAllAndCloseMenu() {
-    toggleAllCategories();
-    setMobileMenuOpen(false);
   }
 
   function setCategoryCollapsed(id: number, collapsed: boolean) {
@@ -226,35 +184,11 @@ export default function Home() {
     setCategories(await fetchPublicApps());
   }
 
-  useEffect(() => {
-    const pendingApps = categories.flatMap((category) => category.apps).filter(appNeedsResolvedMetadata);
-    const freshPendingApps = pendingApps.filter((app) => {
-      const key = `${app.id}:${app.url}:${app.name || ''}:${app.description || ''}`;
-      if (metadataRefreshAttempts.current.has(key)) {
-        return false;
-      }
-      metadataRefreshAttempts.current.add(key);
-      return true;
-    });
-    if (!freshPendingApps.length) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      void refreshApps();
-    }, 2200);
-    return () => window.clearTimeout(timer);
-  }, [categories]);
-
-  function nextSortOrder(categoryId?: number) {
-    const groupApps = adminApps.filter((app) => (categoryId ? app.categoryId === categoryId : !app.categoryId));
-    return groupApps.reduce((max, app) => Math.max(max, app.sortOrder || 0), 0) + 10;
-  }
+  useDeferredMetadataRefresh(allApps, refreshApps);
 
   async function startQuickAdd(category: NavCategory) {
     const categoryId = category.id === 0 ? undefined : category.id;
-    quickAddAutoDescription.current = null;
-    setQuickAddForm({ ...quickAppBlank, categoryId });
+    appEditor.reset(categoryId);
     setQuickAddError('');
     setQuickAddOpen(true);
 
@@ -270,11 +204,10 @@ export default function Home() {
   }
 
   function closeQuickAdd() {
-    quickAddAutoDescription.current = null;
+    appEditor.reset();
     setQuickAddOpen(false);
     setQuickAddError('');
     setQuickAddSaving(false);
-    setQuickAddForm(quickAppBlank);
   }
 
   async function submitQuickAdd(event: FormEvent) {
@@ -282,19 +215,10 @@ export default function Home() {
     setQuickAddError('');
     setQuickAddSaving(true);
 
-    const categoryId = quickAddForm.categoryId ? Number(quickAddForm.categoryId) : undefined;
-    const payload = {
-      ...quickAddForm,
-      name: quickAddForm.name.trim(),
-      description: quickAddDescriptionIsAuto ? '' : quickAddForm.description.trim(),
-      iconUrl: quickAddForm.iconUrl.trim() || null,
-      categoryId,
-      tags: quickAddForm.tags
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-      sortOrder: nextSortOrder(categoryId),
-    };
+    const payload = buildAppPayload(appEditor.form, {
+      apps: adminApps,
+      autoDescription: appEditor.autoDescription,
+    });
 
     try {
       await createApp(payload);
@@ -416,193 +340,26 @@ export default function Home() {
 
   return (
     <main className="home-page">
-      <header className="px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8">
-        <div className="home-surface relative mx-auto flex w-[calc(100vw-2rem)] max-w-7xl flex-col gap-5 overflow-hidden rounded-2xl p-4 sm:w-full sm:gap-6 sm:rounded-3xl sm:p-5">
-          <img
-            src={homeConsoleIllustration}
-            alt=""
-            className="pointer-events-none absolute right-52 top-0 hidden h-28 w-52 select-none object-contain opacity-45 xl:block dark:opacity-25"
-            aria-hidden="true"
-          />
-          <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-            <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
-              <BrandMark logo={settings.logo} className="h-11 w-11 sm:h-12 sm:w-12" iconSize={22} />
-              <div className="min-w-0 flex-1">
-                <h1 className="truncate text-xl font-semibold sm:text-3xl">{settings.site_title || 'AtlasGate 星渡枢航'}</h1>
-                <p className="home-muted mt-1 truncate text-sm font-medium sm:line-clamp-none sm:whitespace-normal">
-                  {settings.site_subtitle || '个人系统、内网服务与运维入口的统一星图'}
-                </p>
-              </div>
-            </div>
-            <div className="hidden gap-2 sm:flex">
-              <button
-                type="button"
-                onClick={toggleAllCategories}
-                className={`home-control focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition ${
-                  allFilteredCollapsed
-                    ? 'home-control-active'
-                    : ''
-                }`}
-                title={allFilteredCollapsed ? '展开全部分类' : '紧凑显示全部分类'}
-                data-tooltip={allFilteredCollapsed ? '展开全部分类' : '紧凑显示全部分类'}
-                aria-pressed={allFilteredCollapsed}
-              >
-                <LayoutGrid size={18} />
-              </button>
-              <Link
-                to="/admin"
-                className="home-control focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition"
-                title="后台管理"
-                data-tooltip="后台管理"
-              >
-                <Shield size={18} />
-              </Link>
-              <button
-                type="button"
-                onClick={() => setDark((value) => !value)}
-                className="home-control focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition"
-                title="切换主题"
-                data-tooltip="切换主题"
-              >
-                {dark ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="home-control home-control-danger focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition"
-                title="退出登录"
-                data-tooltip="退出登录"
-              >
-                <LogOut size={18} />
-              </button>
-            </div>
-            <div className="relative flex w-full min-w-0 shrink-0 justify-start gap-2 sm:hidden">
-              <button
-                type="button"
-                onClick={() => setDark((value) => !value)}
-                className="home-control focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition"
-                title="切换主题"
-                data-tooltip="切换主题"
-              >
-                {dark ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen((value) => !value)}
-                className="home-control focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition"
-                title={mobileMenuOpen ? '收起菜单' : '更多操作'}
-                data-tooltip={mobileMenuOpen ? '收起菜单' : '更多操作'}
-                aria-expanded={mobileMenuOpen}
-              >
-                {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
-              </button>
-              {mobileMenuOpen && (
-                <div className="home-menu absolute right-0 top-12 z-20 w-52 overflow-hidden rounded-lg p-1.5 text-sm">
-                  <button
-                    type="button"
-                    onClick={toggleAllAndCloseMenu}
-                    className="home-menu-item focus-ring flex w-full items-center gap-3 rounded-md px-3 py-2 text-left"
-                  >
-                    <LayoutGrid size={17} />
-                    {allFilteredCollapsed ? '展开全部分类' : '紧凑显示全部分类'}
-                  </button>
-                  <Link
-                    to="/admin"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="home-menu-item focus-ring flex items-center gap-3 rounded-md px-3 py-2"
-                  >
-                    <Shield size={17} />
-                    后台管理
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="home-menu-item home-menu-danger focus-ring flex w-full items-center gap-3 rounded-md px-3 py-2 text-left"
-                  >
-                    <LogOut size={17} />
-                    退出登录
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="relative z-10 grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_330px]">
-            <label className="home-field flex min-h-14 min-w-0 items-center gap-3 rounded-2xl px-4 transition">
-              <Search size={22} className="home-muted shrink-0" />
-              <input
-                value={keyword}
-                onChange={(event) => setKeyword(event.target.value)}
-                placeholder="搜索系统、描述或标签"
-                className="min-w-0 flex-1 bg-transparent text-base font-medium outline-none placeholder:text-slate-400"
-              />
-            </label>
-            <div className="grid min-w-0 grid-cols-3 gap-2">
-              <div className="home-stat min-w-0 rounded-xl px-2 py-2.5 text-center sm:rounded-2xl sm:px-3 sm:py-3">
-                <div className="text-lg font-bold leading-none sm:text-2xl">{totalAppCount}</div>
-                <div className="home-muted mt-1 text-[11px] font-semibold sm:text-xs">入口</div>
-              </div>
-              <div className="home-stat min-w-0 rounded-xl px-2 py-2.5 text-center sm:rounded-2xl sm:px-3 sm:py-3">
-                <div className="text-lg font-bold leading-none text-emerald-700 dark:text-emerald-300 sm:text-2xl">{healthyAppCount}</div>
-                <div className="home-muted mt-1 text-[11px] font-semibold sm:text-xs">正常</div>
-              </div>
-              <button
-                type="button"
-                onClick={focusHealthIssue}
-                disabled={attentionAppCount === 0}
-                className="home-stat home-stat-attention focus-ring min-w-0 rounded-xl px-2 py-2.5 text-center transition disabled:cursor-default sm:rounded-2xl sm:px-3 sm:py-3"
-                title={`异常 ${unhealthyAppCount} 个，访问受限 ${restrictedAppCount} 个`}
-                data-tooltip={`异常 ${unhealthyAppCount} 个，访问受限 ${restrictedAppCount} 个`}
-              >
-                <div
-                  className={`text-lg font-bold leading-none sm:text-2xl ${
-                    unhealthyAppCount > 0
-                      ? 'text-red-600 dark:text-red-300'
-                      : restrictedAppCount > 0
-                        ? 'text-amber-700 dark:text-amber-300'
-                        : 'home-muted'
-                  }`}
-                >
-                  {attentionAppCount}
-                </div>
-                <div className="home-muted mt-1 text-[11px] font-semibold sm:text-xs">需关注</div>
-              </button>
-            </div>
-          </div>
-          {filtered.length > 0 && (
-            <nav aria-label="分类快捷定位" className="relative z-10 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
-              <div className="flex min-w-max gap-2 sm:min-w-0 sm:flex-wrap">
-                {filtered.map((category) => {
-                  const active = activeShortcutCategoryId === category.id;
-                  return (
-                    <button
-                      key={category.id}
-                      type="button"
-                      onClick={() => scrollToCategory(category.id)}
-                      className={`home-shortcut focus-ring inline-flex h-9 shrink-0 items-center gap-2 rounded-full px-3 text-sm font-semibold transition ${
-                        active
-                          ? 'home-shortcut-active'
-                          : ''
-                      }`}
-                      title={`定位到${category.name}`}
-                      data-tooltip={`定位到${category.name}`}
-                      aria-current={active ? 'true' : undefined}
-                    >
-                      <CategoryIcon icon={category.icon} name={category.name} size={15} />
-                      <span className="max-w-28 truncate sm:max-w-40">{category.name}</span>
-                      <span
-                        className={`rounded-full px-1.5 py-0.5 text-xs ${active ? 'bg-black/5' : 'bg-slate-900/5 dark:bg-white/10'}`}
-                      >
-                        {category.apps.length}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </nav>
-          )}
-        </div>
-      </header>
+      <HomeHeader
+        settings={settings}
+        dark={dark}
+        allFilteredCollapsed={allFilteredCollapsed}
+        keyword={keyword}
+        categories={filtered}
+        activeCategoryId={activeShortcutCategoryId}
+        counts={{
+          total: totalAppCount,
+          healthy: healthyAppCount,
+          restricted: restrictedAppCount,
+          unhealthy: unhealthyAppCount,
+        }}
+        onToggleDark={() => setDark((value) => !value)}
+        onToggleAllCategories={toggleAllCategories}
+        onKeywordChange={setKeyword}
+        onCategorySelect={scrollToCategory}
+        onFocusHealthIssue={focusHealthIssue}
+        onLogout={handleLogout}
+      />
 
       <div className="py-4 sm:py-5">
         {filtered.length ? (
@@ -676,107 +433,16 @@ export default function Home() {
               </>
             }
           >
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <label className="sm:col-span-2">
-                <span className="admin-label">访问地址</span>
-                <input
-                  className="admin-input mt-1"
-                  required
-                  value={quickAddForm.url}
-                  onChange={(event) => setQuickAddForm({ ...quickAddForm, url: event.target.value })}
-                  placeholder="https://example.com"
-                  autoFocus
-                />
-              </label>
-              <div className="sm:col-span-2">
-                <AppMetadataPreview
-                  url={quickAddForm.url}
-                  name={quickAddForm.name}
-                  icon={quickAddForm.icon}
-                  iconUrl={quickAddForm.iconUrl}
-                  metadata={quickAddPreview.data}
-                  loading={quickAddPreview.loading}
-                  error={quickAddPreview.error}
-                  validUrl={quickAddPreview.validUrl}
-                  onRetry={quickAddPreview.refresh}
-                />
-              </div>
-              <label className="sm:col-span-2">
-                <span className="admin-label">系统名称</span>
-                <input
-                  className="admin-input mt-1"
-                  value={quickAddForm.name}
-                  onChange={(event) => setQuickAddForm({ ...quickAddForm, name: event.target.value })}
-                  placeholder="留空使用自动名称"
-                />
-              </label>
-              <label className="sm:col-span-2">
-                <span className="flex items-center gap-2">
-                  <span className="admin-label">描述</span>
-                  {quickAddDescriptionIsAuto ? (
-                    <span className="home-accent-badge rounded-full px-2 py-0.5 text-xs font-semibold">
-                      自动简介
-                    </span>
-                  ) : null}
-                </span>
-                <textarea
-                  className="admin-input mt-1 min-h-20"
-                  value={quickAddForm.description}
-                  onChange={(event) => {
-                    quickAddAutoDescription.current = null;
-                    setQuickAddForm({ ...quickAddForm, description: event.target.value });
-                  }}
-                  placeholder="留空自动读取站点简介"
-                />
-              </label>
-              <label>
-                <span className="admin-label">图标字符（字母或数字）</span>
-                <input className="admin-input mt-1" value={quickAddForm.icon} onChange={(event) => setQuickAddForm({ ...quickAddForm, icon: event.target.value })} />
-              </label>
-              <label>
-                <span className="admin-label">图标 URL</span>
-                <input
-                  className="admin-input mt-1"
-                  value={quickAddForm.iconUrl}
-                  onChange={(event) => setQuickAddForm({ ...quickAddForm, iconUrl: event.target.value })}
-                  placeholder="https://example.com/icon.png"
-                />
-              </label>
-              <label>
-                <span className="admin-label">分类</span>
-                <select
-                  className="admin-input mt-1"
-                  value={quickAddForm.categoryId || ''}
-                  onChange={(event) => setQuickAddForm({ ...quickAddForm, categoryId: event.target.value ? Number(event.target.value) : undefined })}
-                >
-                  <option value="">未分类</option>
-                  {adminCategories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span className="admin-label">标签</span>
-                <input className="admin-input mt-1" value={quickAddForm.tags} onChange={(event) => setQuickAddForm({ ...quickAddForm, tags: event.target.value })} placeholder="用英文逗号分隔" />
-              </label>
-              <div className="flex flex-wrap gap-4 text-sm sm:col-span-2">
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={quickAddForm.visible} onChange={(event) => setQuickAddForm({ ...quickAddForm, visible: event.target.checked })} />
-                  前台显示
-                </label>
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={quickAddForm.openInNewTab} onChange={(event) => setQuickAddForm({ ...quickAddForm, openInNewTab: event.target.checked })} />
-                  新窗口打开
-                </label>
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={quickAddForm.healthEnabled} onChange={(event) => setQuickAddForm({ ...quickAddForm, healthEnabled: event.target.checked })} />
-                  启用健康检查
-                </label>
-              </div>
-              {quickAddError && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200 sm:col-span-2">{quickAddError}</p>}
-            </div>
+            <AppEditorFields
+              form={appEditor.form}
+              setForm={appEditor.setForm}
+              categories={adminCategories}
+              descriptionIsAuto={appEditor.descriptionIsAuto}
+              onDescriptionChange={appEditor.changeDescription}
+              preview={appEditor.preview}
+              error={quickAddError}
+              autoBadgeClassName="home-accent-badge rounded-full px-2 py-0.5 text-xs font-semibold"
+            />
           </AdminModal>
         </form>
       )}
