@@ -1,5 +1,5 @@
 import { LayoutGrid, LogOut, Menu, Moon, Search, Shield, Sun, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import homeConsoleIllustration from '../../assets/illustrations/home-console.svg';
 import BrandMark from '../../components/BrandMark';
@@ -45,6 +45,25 @@ export default function HomeHeader({
 }: Props) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const attentionCount = counts.restricted + counts.unhealthy;
+
+  useEffect(() => {
+    function closeOnOutsidePointer() {
+      setMobileMenuOpen(false);
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, []);
 
   function toggleAllAndCloseMenu() {
     onToggleAllCategories();
@@ -124,6 +143,7 @@ export default function HomeHeader({
             </button>
             <button
               type="button"
+              onPointerDown={(event) => event.stopPropagation()}
               onClick={() => setMobileMenuOpen((value) => !value)}
               className="home-control focus-ring inline-flex h-11 w-11 items-center justify-center rounded-xl transition"
               title={mobileMenuOpen ? '收起菜单' : '更多操作'}
@@ -133,7 +153,10 @@ export default function HomeHeader({
               {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
             {mobileMenuOpen ? (
-              <div className="home-menu absolute right-0 top-12 z-50 w-52 overflow-hidden rounded-lg p-1.5 text-sm">
+              <div
+                onPointerDown={(event) => event.stopPropagation()}
+                className="home-menu absolute right-0 top-12 z-50 w-52 overflow-hidden rounded-lg p-1.5 text-sm"
+              >
                 <button
                   type="button"
                   onClick={toggleAllAndCloseMenu}
