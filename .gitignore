@@ -13,3 +13,4 @@ data/*
 .env
 *.log
 .scratch/
+docs/taste-skill-中文说明.md

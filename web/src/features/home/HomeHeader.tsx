@@ -60,7 +60,7 @@ export default function HomeHeader({
           className="pointer-events-none absolute right-52 top-0 hidden h-28 w-52 select-none object-contain opacity-45 xl:block dark:opacity-25"
           aria-hidden="true"
         />
-        <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="relative z-30 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
             <BrandMark logo={settings.logo} className="h-11 w-11 sm:h-12 sm:w-12" iconSize={22} />
             <div className="min-w-0 flex-1">
@@ -133,7 +133,7 @@ export default function HomeHeader({
               {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
             {mobileMenuOpen ? (
-              <div className="home-menu absolute right-0 top-12 z-20 w-52 overflow-hidden rounded-lg p-1.5 text-sm">
+              <div className="home-menu absolute right-0 top-12 z-50 w-52 overflow-hidden rounded-lg p-1.5 text-sm">
                 <button
                   type="button"
                   onClick={toggleAllAndCloseMenu}
