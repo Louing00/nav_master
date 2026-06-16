@@ -93,6 +93,7 @@ sudo DOMAIN=nav.example.com bash scripts/install-nginx.sh
 | `NODE_ENV` | `production` | 运行环境 |
 | `APP_PORT` | `8081` | 服务端口 |
 | `DATABASE_URL` | `file:/data/nav.db` | SQLite 数据库路径 |
+| `ICON_CACHE_DIR` | 数据库同目录下的 `app-icons` | 自动解析 favicon 的本地缓存目录 |
 | `JWT_SECRET` | `please-change-this-secret` | JWT 密钥，生产必须修改 |
 | `JWT_EXPIRES_IN` | `7d` | 登录有效期 |
 | `ADMIN_USERNAME` | `admin` | 初始管理员用户名 |

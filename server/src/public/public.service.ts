@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/com
 import { AppMetadataService } from '../apps/app-metadata.service';
 import { serializePublicApp } from '../apps/app-record';
 import { HealthCheckService } from '../apps/health-check.service';
+import { IconCacheService } from '../apps/icon-cache.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { settingEnabled, settingsRowsToMap } from '../settings/site-settings';
 
@@ -11,6 +12,7 @@ export class PublicService {
     private readonly prisma: PrismaService,
     private readonly appMetadataService: AppMetadataService,
     private readonly healthCheckService: HealthCheckService,
+    private readonly iconCache: IconCacheService,
   ) {}
 
   async config(userId: number) {
@@ -146,5 +148,9 @@ export class PublicService {
       publicRequest: true,
     });
     return { success: true };
+  }
+
+  getCachedIcon(file: string) {
+    return this.iconCache.getCachedIcon(file);
   }
 }

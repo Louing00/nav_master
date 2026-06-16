@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Req, UseGuards } from '@nestjs/common';
-import { Request } from 'express';
+import { Body, Controller, Get, NotFoundException, Param, ParseIntPipe, Post, Req, Res, StreamableFile, UseGuards } from '@nestjs/common';
+import { createReadStream } from 'fs';
+import { Request, Response } from 'express';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { PublicService } from './public.service';
 
@@ -33,5 +34,22 @@ export class PublicController {
   @Post('apps/:id/cache-browser-icon')
   cacheBrowserIcon(@Req() request: AuthRequest, @Param('id', ParseIntPipe) id: number, @Body('resolvedIconUrl') resolvedIconUrl: string) {
     return this.publicService.cacheBrowserResolvedIcon(request.user.id, id, resolvedIconUrl);
+  }
+
+  @Get('app-icons/:file')
+  async appIcon(@Param('file') file: string, @Res({ passthrough: true }) response: Response) {
+    const icon = await this.publicService.getCachedIcon(file);
+    if (!icon) {
+      throw new NotFoundException('图标不存在');
+    }
+
+    response.set({
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Content-Security-Policy': "default-src 'none'; img-src data:; style-src 'unsafe-inline'",
+      'Content-Type': icon.contentType,
+      'X-Content-Type-Options': 'nosniff',
+    });
+
+    return new StreamableFile(createReadStream(icon.path));
   }
 }
