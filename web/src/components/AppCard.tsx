@@ -22,7 +22,9 @@ export default function AppCard({ app, compact = false, sortMode = false }: Prop
         target={app.openInNewTab ? '_blank' : '_self'}
         rel="noreferrer"
         className={`home-card focus-ring group flex min-h-14 items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 transition hover:-translate-y-0.5 ${sortClassName}`}
-        title="打开系统"
+        title={displayDescription || '打开系统'}
+        data-tooltip={displayDescription || undefined}
+        data-tooltip-variant={displayDescription ? 'description' : undefined}
       >
         <AppIcon app={app} compact />
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold sm:text-base">{displayName}</h3>
@@ -38,6 +40,8 @@ export default function AppCard({ app, compact = false, sortMode = false }: Prop
         target={app.openInNewTab ? '_blank' : '_self'}
         rel="noreferrer"
         className="focus-ring flex h-full min-w-0 flex-col rounded-2xl p-3.5 sm:p-4"
+        data-tooltip={displayDescription || undefined}
+        data-tooltip-variant={displayDescription ? 'description' : undefined}
       >
         <div className="flex min-w-0 items-start gap-3 sm:gap-4">
           <AppIcon app={app} />

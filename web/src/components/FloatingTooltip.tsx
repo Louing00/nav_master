@@ -6,6 +6,7 @@ type TooltipState = {
   left: number;
   top: number;
   placement: 'top' | 'bottom';
+  variant: 'compact' | 'description';
 };
 
 function getTooltipTarget(target: EventTarget | null) {
@@ -23,8 +24,9 @@ function resolveTooltip(target: HTMLElement): TooltipState | null {
   const rawLeft = rect.left + rect.width / 2;
   const left = Math.min(Math.max(rawLeft, 16), window.innerWidth - 16);
   const top = placement === 'top' ? rect.top - 8 : rect.bottom + 8;
+  const variant = target.getAttribute('data-tooltip-variant') === 'description' ? 'description' : 'compact';
 
-  return { text, left, top, placement };
+  return { text, left, top, placement, variant };
 }
 
 export default function FloatingTooltip() {
@@ -43,6 +45,17 @@ export default function FloatingTooltip() {
     }
 
     function handlePointerOut(event: PointerEvent) {
+      const target = getTooltipTarget(event.target);
+      if (target && !target.contains(event.relatedTarget as Node | null)) {
+        show(null);
+      }
+    }
+
+    function handleMouseOver(event: MouseEvent) {
+      show(getTooltipTarget(event.target));
+    }
+
+    function handleMouseOut(event: MouseEvent) {
       const target = getTooltipTarget(event.target);
       if (target && !target.contains(event.relatedTarget as Node | null)) {
         show(null);
@@ -72,6 +85,8 @@ export default function FloatingTooltip() {
 
     document.addEventListener('pointerover', handlePointerOver);
     document.addEventListener('pointerout', handlePointerOut);
+    document.addEventListener('mouseover', handleMouseOver);
+    document.addEventListener('mouseout', handleMouseOut);
     document.addEventListener('focusin', handleFocusIn);
     document.addEventListener('focusout', handleFocusOut);
     document.addEventListener('scroll', refreshPosition, true);
@@ -81,6 +96,8 @@ export default function FloatingTooltip() {
     return () => {
       document.removeEventListener('pointerover', handlePointerOver);
       document.removeEventListener('pointerout', handlePointerOut);
+      document.removeEventListener('mouseover', handleMouseOver);
+      document.removeEventListener('mouseout', handleMouseOut);
       document.removeEventListener('focusin', handleFocusIn);
       document.removeEventListener('focusout', handleFocusOut);
       document.removeEventListener('scroll', refreshPosition, true);
@@ -95,7 +112,11 @@ export default function FloatingTooltip() {
 
   return createPortal(
     <div
-      className="pointer-events-none fixed z-[9999] max-w-xs rounded-md bg-ink px-2.5 py-1.5 text-center text-xs font-semibold leading-snug text-white shadow-lg dark:bg-white dark:text-ink"
+      className={`pointer-events-none fixed z-[9999] rounded-md bg-ink text-white shadow-lg dark:bg-white dark:text-ink ${
+        tooltip.variant === 'description'
+          ? 'max-w-[min(28rem,calc(100vw-2rem))] px-3 py-2 text-left text-sm font-medium leading-relaxed'
+          : 'max-w-xs px-2.5 py-1.5 text-center text-xs font-semibold leading-snug'
+      }`}
       style={{
         left: tooltip.left,
         top: tooltip.top,
