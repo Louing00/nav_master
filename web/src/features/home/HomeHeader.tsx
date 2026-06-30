@@ -1,5 +1,6 @@
 import { LayoutGrid, LogOut, Menu, Moon, Search, Shield, Sun, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import type { RefObject } from 'react';
 import { Link } from 'react-router-dom';
 import homeConsoleIllustration from '../../assets/illustrations/home-console.svg';
 import BrandMark from '../../components/BrandMark';
@@ -20,6 +21,7 @@ type Props = {
     restricted: number;
     unhealthy: number;
   };
+  searchInputRef: RefObject<HTMLInputElement>;
   onToggleDark: () => void;
   onToggleAllCategories: () => void;
   onKeywordChange: (keyword: string) => void;
@@ -36,6 +38,7 @@ export default function HomeHeader({
   categories,
   activeCategoryId,
   counts,
+  searchInputRef,
   onToggleDark,
   onToggleAllCategories,
   onKeywordChange,
@@ -190,6 +193,7 @@ export default function HomeHeader({
           <label className="home-field flex min-h-14 min-w-0 items-center gap-3 rounded-2xl px-4 transition">
             <Search size={22} className="home-muted shrink-0" />
             <input
+              ref={searchInputRef}
               value={keyword}
               onChange={(event) => onKeywordChange(event.target.value)}
               placeholder="搜索系统、描述或标签"

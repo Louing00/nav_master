@@ -1,5 +1,5 @@
 import { ArrowUp, Save, X } from 'lucide-react';
-import { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { DragEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminModal from '../components/AdminModal';
 import CategorySection from '../components/CategorySection';
@@ -54,11 +54,103 @@ function formatHealthSummary(categoryName: string, checkedApps: NavApp[]) {
   return `${categoryName} 检查完成：正常 ${healthy} 个，受限 ${restricted} 个，异常 ${unhealthy} 个`;
 }
 
+function findFirstHealthIssue(apps: NavApp[]) {
+  return apps.find((app) => app.healthStatus === 'unhealthy') || apps.find((app) => app.healthStatus === 'restricted');
+}
+
+function isEditableTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+}
+
+function openApp(app: NavApp) {
+  if (app.openInNewTab) {
+    const opened = window.open(app.url, '_blank', 'noopener,noreferrer');
+    if (opened) {
+      opened.opener = null;
+    }
+    return;
+  }
+
+  window.location.assign(app.url);
+}
+
+function HomeLoadingSkeleton() {
+  return (
+    <main className="home-page" aria-label="首页加载中">
+      <div className="px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8">
+        <div className="home-surface mx-auto flex w-[calc(100vw-2rem)] max-w-7xl flex-col gap-5 rounded-2xl p-4 sm:w-full sm:rounded-3xl sm:p-5">
+          <div className="flex animate-pulse items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-slate-200 dark:bg-slate-700" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="h-6 w-48 rounded bg-slate-200 dark:bg-slate-700" />
+              <div className="h-4 w-64 max-w-full rounded bg-slate-200 dark:bg-slate-700" />
+            </div>
+          </div>
+          <div className="grid animate-pulse gap-3 lg:grid-cols-[minmax(0,1fr)_330px]">
+            <div className="h-14 rounded-2xl bg-slate-200 dark:bg-slate-700" />
+            <div className="grid grid-cols-3 gap-2">
+              {[0, 1, 2].map((item) => (
+                <div key={item} className="h-14 rounded-xl bg-slate-200 dark:bg-slate-700 sm:rounded-2xl" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="py-4 sm:py-5">
+        {[0, 1].map((section) => (
+          <section
+            key={section}
+            className="mx-auto w-[calc(100vw-2rem)] max-w-7xl py-3 sm:w-[calc(100vw-3rem)] sm:py-4 lg:w-[calc(100vw-4rem)]"
+          >
+            <div className="home-surface grid animate-pulse gap-4 rounded-2xl p-4 sm:rounded-3xl sm:p-5 lg:grid-cols-[220px_1fr]">
+              <div className="space-y-3">
+                <div className="h-12 w-12 rounded-2xl bg-slate-200 dark:bg-slate-700" />
+                <div className="h-6 w-32 rounded bg-slate-200 dark:bg-slate-700" />
+                <div className="h-4 w-44 rounded bg-slate-200 dark:bg-slate-700" />
+              </div>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {[0, 1, 2].map((item) => (
+                  <div key={item} className="h-36 rounded-2xl bg-slate-200 dark:bg-slate-700" />
+                ))}
+              </div>
+            </div>
+          </section>
+        ))}
+      </div>
+    </main>
+  );
+}
+
+function HomeLoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <main className="home-page flex min-h-screen items-center justify-center px-4">
+      <div className="home-surface w-full max-w-xl rounded-2xl p-5 text-center sm:rounded-3xl sm:p-6">
+        <EmptyState title="首页加载失败" description={message || '暂时无法获取站点配置和入口列表。'} />
+        <button
+          type="button"
+          onClick={onRetry}
+          className="home-primary focus-ring mt-5 inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold transition"
+        >
+          重新加载
+        </button>
+      </div>
+    </main>
+  );
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const [settings, setSettings] = useState<SiteSettings>({});
   const [categories, setCategories] = useState<NavCategory[]>([]);
+  const [homeLoading, setHomeLoading] = useState(true);
+  const [homeLoadError, setHomeLoadError] = useState('');
   const [keyword, setKeyword] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const focusResetTimerRef = useRef<number | null>(null);
   const [dark, setDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>(readCollapsedCategories);
   const [checkingCategoryIds, setCheckingCategoryIds] = useState<Set<number>>(new Set());
@@ -71,6 +163,8 @@ export default function Home() {
   const [dragOverApp, setDragOverApp] = useState<DragState | null>(null);
   const [sortingCategoryIds, setSortingCategoryIds] = useState<Set<number>>(new Set());
   const [activeShortcutCategoryId, setActiveShortcutCategoryId] = useState<number | null>(null);
+  const [activeQuickOpenIndex, setActiveQuickOpenIndex] = useState(0);
+  const [focusedIssueAppId, setFocusedIssueAppId] = useState<number | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const { toast, showToast, clearToast } = useToast();
   const appEditor = useAppEditor(quickAddOpen);
@@ -94,11 +188,31 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    Promise.all([fetchPublicConfig(), fetchPublicApps()]).then(([config, apps]) => {
+    return () => {
+      if (focusResetTimerRef.current) {
+        window.clearTimeout(focusResetTimerRef.current);
+      }
+    };
+  }, []);
+
+  const loadHome = useCallback(async () => {
+    setHomeLoading(true);
+    setHomeLoadError('');
+
+    try {
+      const [config, apps] = await Promise.all([fetchPublicConfig(), fetchPublicApps()]);
       setSettings(config);
       setCategories(apps);
-    });
+    } catch (err) {
+      setHomeLoadError(getErrorMessage(err));
+    } finally {
+      setHomeLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadHome();
+  }, [loadHome]);
 
   const filtered = useMemo(() => {
     const q = keyword.trim().toLowerCase();
@@ -116,6 +230,10 @@ export default function Home() {
       .filter((category) => category.apps.length > 0);
   }, [categories, keyword]);
 
+  const searchHasKeyword = keyword.trim().length > 0;
+  const quickOpenApps = useMemo(() => (searchHasKeyword ? filtered.flatMap((category) => category.apps) : []), [filtered, searchHasKeyword]);
+  const activeQuickOpenApp =
+    quickOpenApps.length > 0 ? quickOpenApps[Math.min(activeQuickOpenIndex, quickOpenApps.length - 1)] : null;
   const filteredCategoryIds = filtered.map((category) => String(category.id));
   const allFilteredCollapsed = filteredCategoryIds.length > 0 && filteredCategoryIds.every((id) => collapsedCategories[id]);
   const homeQuickSortEnabled = settings.home_quick_sort_enabled === 'true';
@@ -125,6 +243,83 @@ export default function Home() {
   const healthyAppCount = allApps.filter((app) => app.healthStatus === 'healthy').length;
   const restrictedAppCount = allApps.filter((app) => app.healthStatus === 'restricted').length;
   const unhealthyAppCount = allApps.filter((app) => app.healthStatus === 'unhealthy').length;
+
+  useEffect(() => {
+    setActiveQuickOpenIndex(0);
+  }, [keyword]);
+
+  useEffect(() => {
+    setActiveQuickOpenIndex((current) => (quickOpenApps.length === 0 ? 0 : Math.min(current, quickOpenApps.length - 1)));
+  }, [quickOpenApps.length]);
+
+  useEffect(() => {
+    if (!searchHasKeyword || !activeQuickOpenApp) {
+      return;
+    }
+
+    const activeCategory = filtered.find((category) => category.apps.some((app) => app.id === activeQuickOpenApp.id));
+    if (activeCategory) {
+      setActiveShortcutCategoryId(activeCategory.id);
+      setCollapsedCategories((current) => {
+        if (!current[String(activeCategory.id)]) {
+          return current;
+        }
+
+        const next = { ...current };
+        delete next[String(activeCategory.id)];
+        return next;
+      });
+    }
+
+    const timer = window.setTimeout(() => {
+      document.getElementById(`app-${activeQuickOpenApp.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+
+    return () => window.clearTimeout(timer);
+  }, [activeQuickOpenApp, filtered, searchHasKeyword]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (quickAddOpen || event.isComposing) {
+        return;
+      }
+
+      const searchFocused = document.activeElement === searchInputRef.current;
+      const targetIsEditable = isEditableTarget(event.target);
+
+      if (event.key === '/' && !targetIsEditable) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+
+      if (event.key === 'Escape' && searchFocused && keyword) {
+        event.preventDefault();
+        setKeyword('');
+        return;
+      }
+
+      if (!searchHasKeyword || quickOpenApps.length === 0 || (!searchFocused && targetIsEditable)) {
+        return;
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setActiveQuickOpenIndex((current) => (current + 1) % quickOpenApps.length);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setActiveQuickOpenIndex((current) => (current - 1 + quickOpenApps.length) % quickOpenApps.length);
+      } else if (event.key === 'Enter' && searchFocused && activeQuickOpenApp) {
+        event.preventDefault();
+        openApp(activeQuickOpenApp);
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeQuickOpenApp, keyword, quickAddOpen, quickOpenApps.length, searchHasKeyword]);
+
   async function handleLogout() {
     await logout();
     navigate('/admin/login');
@@ -157,6 +352,25 @@ export default function Home() {
     });
   }
 
+  function revealHealthIssue(app: NavApp, categoryId?: number) {
+    if (categoryId !== undefined) {
+      setCategoryCollapsed(categoryId, false);
+      setActiveShortcutCategoryId(categoryId);
+    }
+
+    setFocusedIssueAppId(app.id);
+    window.setTimeout(() => {
+      document.getElementById(`app-${app.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+
+    if (focusResetTimerRef.current) {
+      window.clearTimeout(focusResetTimerRef.current);
+    }
+    focusResetTimerRef.current = window.setTimeout(() => {
+      setFocusedIssueAppId((current) => (current === app.id ? null : current));
+    }, 6000);
+  }
+
   async function runCategoryHealthCheck(category: NavCategory) {
     if (checkingCategoryIds.has(category.id)) {
       return;
@@ -169,6 +383,10 @@ export default function Home() {
       const hasUnhealthy = checkedApps.some((app) => app.healthStatus === 'unhealthy');
       const hasRestricted = checkedApps.some((app) => app.healthStatus === 'restricted');
       showToast(formatHealthSummary(category.name, checkedApps), hasUnhealthy ? 'error' : hasRestricted ? 'info' : 'success');
+      const issueApp = findFirstHealthIssue(checkedApps);
+      if (issueApp) {
+        revealHealthIssue(issueApp, category.id);
+      }
     } catch (err) {
       showToast(getErrorMessage(err), 'error');
     } finally {
@@ -320,22 +538,22 @@ export default function Home() {
   }
 
   function focusHealthIssue() {
-    const issueApp =
-      allApps.find((app) => app.healthStatus === 'unhealthy') ||
-      allApps.find((app) => app.healthStatus === 'restricted');
+    const issueApp = findFirstHealthIssue(allApps);
     if (!issueApp) {
       return;
     }
 
     const category = categories.find((item) => item.apps.some((app) => app.id === issueApp.id));
-    if (category) {
-      setCategoryCollapsed(category.id, false);
-      setActiveShortcutCategoryId(category.id);
-    }
+    revealHealthIssue(issueApp, category?.id);
+    showToast(issueApp.healthStatus === 'unhealthy' ? '已定位到异常入口' : '已定位到访问受限入口', issueApp.healthStatus === 'unhealthy' ? 'error' : 'info');
+  }
 
-    window.setTimeout(() => {
-      document.getElementById(`app-${issueApp.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 50);
+  if (homeLoading) {
+    return <HomeLoadingSkeleton />;
+  }
+
+  if (homeLoadError) {
+    return <HomeLoadError message={homeLoadError} onRetry={() => void loadHome()} />;
   }
 
   return (
@@ -353,6 +571,7 @@ export default function Home() {
           restricted: restrictedAppCount,
           unhealthy: unhealthyAppCount,
         }}
+        searchInputRef={searchInputRef}
         onToggleDark={() => setDark((value) => !value)}
         onToggleAllCategories={toggleAllCategories}
         onKeywordChange={setKeyword}
@@ -375,6 +594,8 @@ export default function Home() {
               quickSortEnabled={quickSortActive}
               sortingAppId={draggingApp?.categoryId === category.id ? draggingApp.appId : null}
               dragOverAppId={dragOverApp?.categoryId === category.id ? dragOverApp.appId : null}
+              selectedAppId={searchHasKeyword ? (activeQuickOpenApp?.id ?? null) : null}
+              highlightedAppId={focusedIssueAppId}
               sortSaving={sortingCategoryIds.has(category.id)}
               onAppDragStart={(event, appId) => handleAppDragStart(category, event, appId)}
               onAppDragOver={(event, appId) => handleAppDragOver(category, event, appId)}

@@ -1,4 +1,5 @@
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Info } from 'lucide-react';
+import { useId, useState } from 'react';
 import AppIcon from './AppIcon';
 import HealthBadge from './HealthBadge';
 import type { NavApp } from '../types/app';
@@ -14,32 +15,61 @@ export default function AppCard({ app, compact = false, sortMode = false }: Prop
   const sortClassName = sortMode ? 'cursor-grab active:cursor-grabbing' : '';
   const displayName = getAppDisplayName(app);
   const displayDescription = getAppDisplayDescription(app);
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
+  const descriptionId = useId();
+  const hasDescription = Boolean(displayDescription);
+  const infoButton = hasDescription ? (
+    <button
+      type="button"
+      onClick={() => setDescriptionOpen((value) => !value)}
+      className={`home-card-info-button focus-ring absolute right-2.5 top-2.5 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg transition sm:hidden ${
+        descriptionOpen ? 'home-card-info-button-active' : ''
+      }`}
+      title={descriptionOpen ? '收起简介' : '查看简介'}
+      data-tooltip={descriptionOpen ? '收起简介' : '查看简介'}
+      aria-label={descriptionOpen ? '收起简介' : '查看简介'}
+      aria-expanded={descriptionOpen}
+      aria-controls={descriptionId}
+    >
+      <Info size={16} />
+    </button>
+  ) : null;
+  const mobileDescription =
+    hasDescription && descriptionOpen ? (
+      <div id={descriptionId} className="home-mobile-description mx-3 mb-3 rounded-lg px-3 py-2 text-sm font-medium sm:hidden">
+        {displayDescription}
+      </div>
+    ) : null;
 
   if (compact) {
     return (
-      <a
-        href={app.url}
-        target={app.openInNewTab ? '_blank' : '_self'}
-        rel="noreferrer"
-        className={`home-card focus-ring group flex min-h-14 items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 transition hover:-translate-y-0.5 ${sortClassName}`}
-        title={displayDescription || '打开系统'}
-        data-tooltip={displayDescription || undefined}
-        data-tooltip-variant={displayDescription ? 'description' : undefined}
-      >
-        <AppIcon app={app} compact />
-        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold sm:text-base">{displayName}</h3>
-        <HealthBadge app={app} compact />
-      </a>
+      <article className={`home-card group relative overflow-hidden rounded-xl transition hover:-translate-y-0.5 ${sortClassName}`}>
+        <a
+          href={app.url}
+          target={app.openInNewTab ? '_blank' : '_self'}
+          rel="noreferrer"
+          className="focus-ring flex min-h-14 items-center gap-3 rounded-xl px-3 py-2.5 pr-12 sm:pr-3"
+          title={displayDescription || '打开系统'}
+          data-tooltip={displayDescription || undefined}
+          data-tooltip-variant={displayDescription ? 'description' : undefined}
+        >
+          <AppIcon app={app} compact />
+          <h3 className="min-w-0 flex-1 truncate text-sm font-semibold sm:text-base">{displayName}</h3>
+          <HealthBadge app={app} compact />
+        </a>
+        {infoButton}
+        {mobileDescription}
+      </article>
     );
   }
 
   return (
-    <article className={`home-card group h-full min-h-36 overflow-hidden rounded-2xl transition hover:-translate-y-0.5 ${sortClassName}`}>
+    <article className={`home-card group relative h-full min-h-36 overflow-hidden rounded-2xl transition hover:-translate-y-0.5 ${sortClassName}`}>
       <a
         href={app.url}
         target={app.openInNewTab ? '_blank' : '_self'}
         rel="noreferrer"
-        className="focus-ring flex h-full min-w-0 flex-col rounded-2xl p-3.5 sm:p-4"
+        className="focus-ring flex h-full min-w-0 flex-col rounded-2xl p-3.5 pr-12 sm:p-4"
         data-tooltip={displayDescription || undefined}
         data-tooltip-variant={displayDescription ? 'description' : undefined}
       >
@@ -75,6 +105,8 @@ export default function AppCard({ app, compact = false, sortMode = false }: Prop
           </span>
         </div>
       </a>
+      {infoButton}
+      {mobileDescription}
     </article>
   );
 }

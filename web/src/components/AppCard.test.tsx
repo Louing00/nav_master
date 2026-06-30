@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import AppCard from './AppCard';
 import type { NavApp } from '../types/app';
@@ -33,5 +34,19 @@ describe('AppCard', () => {
     const card = screen.getByRole('link', { name: /邻渡/ });
     expect(card).toHaveAttribute('data-tooltip', app.description);
     expect(card).toHaveAttribute('data-tooltip-variant', 'description');
+  });
+
+  it('lets mobile users expand the description without opening the link', async () => {
+    const user = userEvent.setup();
+    const description = app.description ?? '';
+    render(<AppCard app={app} compact />);
+
+    const button = screen.getByRole('button', { name: '查看简介' });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(button);
+
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+    expect(document.getElementById(button.getAttribute('aria-controls') || '')).toHaveTextContent(description);
   });
 });

@@ -2,6 +2,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createRef } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import HomeHeader from './HomeHeader';
@@ -17,6 +18,7 @@ function renderHeader() {
         categories={[]}
         activeCategoryId={null}
         counts={{ total: 2, healthy: 2, restricted: 0, unhealthy: 0 }}
+        searchInputRef={createRef<HTMLInputElement>()}
         onToggleDark={vi.fn()}
         onToggleAllCategories={vi.fn()}
         onKeywordChange={vi.fn()}

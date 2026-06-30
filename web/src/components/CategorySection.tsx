@@ -14,6 +14,8 @@ type Props = {
   quickSortEnabled?: boolean;
   sortingAppId?: number | null;
   dragOverAppId?: number | null;
+  selectedAppId?: number | null;
+  highlightedAppId?: number | null;
   sortSaving?: boolean;
   onAppDragStart?: (event: DragEvent<HTMLDivElement>, appId: number) => void;
   onAppDragOver?: (event: DragEvent<HTMLDivElement>, appId: number) => void;
@@ -31,6 +33,8 @@ export default function CategorySection({
   quickSortEnabled = false,
   sortingAppId,
   dragOverAppId,
+  selectedAppId,
+  highlightedAppId,
   sortSaving = false,
   onAppDragStart,
   onAppDragOver,
@@ -93,7 +97,9 @@ export default function CategorySection({
               id={`app-${app.id}`}
               className={`relative h-full rounded-lg transition ${
                 sortingAppId === app.id ? 'scale-[0.99] opacity-60' : ''
-              } ${dragOverAppId === app.id ? 'home-drag-over ring-2 ring-offset-2' : ''}`}
+              } ${dragOverAppId === app.id ? 'home-drag-over ring-2 ring-offset-2' : ''} ${
+                selectedAppId === app.id ? 'home-quick-open-active' : ''
+              } ${highlightedAppId === app.id ? 'home-health-focus' : ''}`}
               draggable={quickSortEnabled && !sortSaving}
               onDragStart={(event) => onAppDragStart?.(event, app.id)}
               onDragEnter={(event) => onAppDragOver?.(event, app.id)}
